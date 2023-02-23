@@ -270,7 +270,8 @@ CALL MXMAOP(SIMI,1,NFLEVG,ZSDIV,1,NFLEVG,ZSDIVP(:,KSTA:KEND),1,NFLEVG,&
 dim_tabl=int(YDGEOMETRY%YRDIMV%NFLEVG)
 !!$acc data copy(ZSDIVP)
 !$acc host_data use_device(YDDYN%SIMI,ZSDIV,ZSDIVP)
-CALL cublasDgemm('N','N',dim_tabl,int(ISPCOL),dim_tabl,1.0D0,YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,0.0D0,ZSDIVP(:,KSTA:KEND),dim_tabl)
+!!CALL cublasDgemm('N','N',dim_tabl,int(ISPCOL),dim_tabl,1.0D0,YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,0.0D0,ZSDIVP(:,KSTA:KEND),dim_tabl)
+CALL cuda_gemm('N','N',dim_tabl,int(ISPCOL),dim_tabl,1.0D0,YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,0.0D0,ZSDIVP(:,KSTA:KEND),dim_tabl)
 !!$acc end host_data
 !$acc end data
 
