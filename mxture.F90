@@ -488,8 +488,8 @@ ELSEIF (IT == 3) THEN
         PX(JV,KLX-1,JI)=PY(JV,KLX-1,JI)-ZBB*PX(JV,KLX,JI)
       ENDDO
     ENDDO
-  ENDIF
   !$acc end parallel
+  ENDIF
 
   IF (KLX >= 3) THEN
              !$acc parallel private(ji,jl,jv,zbb,zcc) present(px,py)

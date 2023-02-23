@@ -73,6 +73,7 @@ USE YOMRIP       , ONLY : TRIP
 USE YOMCST       , ONLY : TCST
 
 use cublas
+use cublas_mod
 
 !     ------------------------------------------------------------------
 
@@ -115,8 +116,11 @@ INTEGER(KIND=JPIM) :: II, IN, IOFF, IS0, IS02, ISE, ISPCOL, JLEV, JN, JSP
 REAL(KIND=JPRB) :: ZBDT, ZBDT2
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 
-type(cublasHandle)::handle
-integer::dim_tabl
+!!!integer::dim_tabl
+!!!REAL (KIND=JPRB) :: ZALPHA, ZBETA
+!!!REAL (KIND=JPRB), POINTER :: ZSIMI (:,:)
+!!!REAL (KIND=JPRB), POINTER :: ZSIMO (:,:)
+
 
 !     ------------------------------------------------------------------
 
@@ -191,7 +195,7 @@ ZBDT2=(ZBDT*RSTRET)**2
 !*        2.3  Computes right-hand side of Helmholtz equation.
 
 !$acc data copy(pspdivg,psptg,pspspg)
-!$acc data copyout(zsdiv,zhelp,zsp,zst,zspdivp,zspdivp)
+!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
 
 if (limpf) then 
 !$acc enter data copyin(pspauxg)
@@ -263,17 +267,30 @@ IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
 !           Current space --> vertical eigenmodes space.
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Call to SGEMMX Parallelised
-!$acc update host(zsdiv,zsdivp)
-CALL MXMAOP(SIMI,1,NFLEVG,ZSDIV,1,NFLEVG,ZSDIVP(:,KSTA:KEND),1,NFLEVG,&
- & NFLEVG,NFLEVG,ISPCOL) 
-!$acc update device(zsdiv,zsdivp)
+
+!!!zalpha = 1.0_JPRB
+!!!zbeta = 0.0_JPRB
+
+!!$acc update host(zsdiv,zsdivp)
+!!CALL MXMAOP(SIMI,1,NFLEVG,ZSDIV,1,NFLEVG,ZSDIVP(:,KSTA:KEND),1,NFLEVG,&
+ !!& NFLEVG,NFLEVG,ISPCOL) 
+!!!$acc update device(zsdiv,zsdivp)
+
+
 dim_tabl=int(YDGEOMETRY%YRDIMV%NFLEVG)
 !!$acc data copy(ZSDIVP)
-!$acc host_data use_device(YDDYN%SIMI,ZSDIV,ZSDIVP)
-!!CALL cublasDgemm('N','N',dim_tabl,int(ISPCOL),dim_tabl,1.0D0,YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,0.0D0,ZSDIVP(:,KSTA:KEND),dim_tabl)
-CALL cuda_gemm('N','N',dim_tabl,int(ISPCOL),dim_tabl,1.0D0,YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,0.0D0,ZSDIVP(:,KSTA:KEND),dim_tabl)
-!!$acc end host_data
-!$acc end data
+!!$acc host_data use_device(ZSIMI,ZSDIV,ZSDIVP)
+!$acc host_data use_device(SIMI,ZSDIV,ZSDIVP)
+!CALL cublasDgemm ('N','N',dim_tabl,int(ISPCOL),dim_tabl,1.0D0, &
+!  & YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,0.0D0,ZSDIVP(:,KSTA:KEND),dim_tabl)
+!CALL cublasDgemm ('N','N',dim_tabl,int(ISPCOL),dim_tabl,zalpha, &
+!  & YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,zbeta,ZSDIVP(:,KSTA:KEND),dim_tabl)
+CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
+  & SIMI,NFLEVG,ZSDIV,NFLEVG,0.0_JPRB,ZSDIVP(:,KSTA:KEND),NFLEVG)
+!CALL cuda_gemm('N','N',dim_tabl,int(ISPCOL),dim_tabl,zalpha, &
+!   & ZSIMI,dim_tabl,ZSDIV,dim_tabl,zbeta,ZSDIVP(:,KSTA:KEND),dim_tabl)
+!$acc end host_data
+!!!$acc end data
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
 
@@ -352,8 +369,17 @@ ENDIF
 !           Vertical eigenmodes space --> current space.
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Calls SGEMMX in parallel region
-CALL MXMAOP(SIMO,1,NFLEVG,ZSPDIVP(:,KSTA:KEND),1,NFLEVG,PSPDIVG(:,KSTA:KEND),1,&
- & NFLEVG,NFLEVG,NFLEVG,ISPCOL)  
+!!!$acc update host(zsdiv,zsdivp)
+!!!CALL MXMAOP(SIMO,1,NFLEVG,ZSPDIVP(:,KSTA:KEND),1,NFLEVG,PSPDIVG(:,KSTA:KEND),1,&
+!!! & NFLEVG,NFLEVG,NFLEVG,ISPCOL)  
+!!!$acc update device(zsdiv,zsdivp)
+
+
+!$acc host_data use_device(SIMO,ZSPDIVP,PSPDIVG)
+CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
+  & SIMO,NFLEVG,ZSPDIVP(:,KSTA:KEND),NFLEVG,0.0_JPRB,PSPDIVG(:,KSTA:KEND),NFLEVG)
+!$acc end host_data
+
 IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
 
 IF (LSIDG) THEN
@@ -431,7 +457,7 @@ if (limpf) then
 !$acc exit data copyout(pspauxg)
 end if
 !$acc end data !!!copyout(zsdiv,zhelp,zst,zsp)
-!$acc end data !!!copy(pspdivg,psptg,pspspg,zspdivp,zspdivp)
+!$acc end data !!!copy(pspdivg,psptg,pspspg,zspdivp,zsdivp)
 
 
 DEALLOCATE(ZSDIVP)
