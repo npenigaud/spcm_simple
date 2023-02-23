@@ -192,10 +192,18 @@ ISPCOL=KEND-KSTA+1
 ZBDT=RBTS2*TDT
 ZBDT2=(ZBDT*RSTRET)**2
 
+!!2.2 affichage des pointeurs
+!!print *,"LSIDG : ",LSIDG
+!!print *,"LDONEM : ",LDONEM
+!!print *,"LIMPF : ",LIMPF
+!!print *,"LRSIDDH : ",LRSIDDH
+
 !*        2.3  Computes right-hand side of Helmholtz equation.
 
+!!!$acc data copy(pspdivg(NFLEVG,MAX(NSPEC2V,NSPEC2VF)),psptg(NFLEVG,MAX(NSPEC2V,NSPEC2VF)),pspspg(MAX(NSPEC2V,NSPEC2VF))) 
+!!!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp(NFLEVG,MAX(NSPEC2V,NSPEC2VF)),zspdivp(NFLEVG,MAX(NSPEC2V,NSPEC2VF))) 
 !$acc data copy(pspdivg,psptg,pspspg)
-!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
+!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp) 
 
 if (limpf) then 
 !$acc enter data copyin(pspauxg)
@@ -277,20 +285,26 @@ IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Call to SGEMMX Parallelised
 !!!$acc update device(zsdiv,zsdivp)
 
 
-dim_tabl=int(YDGEOMETRY%YRDIMV%NFLEVG)
+!!dim_tabl=int(YDGEOMETRY%YRDIMV%NFLEVG)
 !!$acc data copy(ZSDIVP)
 !!$acc host_data use_device(ZSIMI,ZSDIV,ZSDIVP)
-!$acc host_data use_device(SIMI,ZSDIV,ZSDIVP)
+!!!$acc host_data use_device(SIMI,ZSDIV,ZSDIVP)
 !CALL cublasDgemm ('N','N',dim_tabl,int(ISPCOL),dim_tabl,1.0D0, &
 !  & YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,0.0D0,ZSDIVP(:,KSTA:KEND),dim_tabl)
 !CALL cublasDgemm ('N','N',dim_tabl,int(ISPCOL),dim_tabl,zalpha, &
 !  & YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,zbeta,ZSDIVP(:,KSTA:KEND),dim_tabl)
-CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
-  & SIMI,NFLEVG,ZSDIV,NFLEVG,0.0_JPRB,ZSDIVP(:,KSTA:KEND),NFLEVG)
+!!!CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
+!!!  & SIMI,NFLEVG,ZSDIV,NFLEVG,0.0_JPRB,ZSDIVP(:,KSTA:KEND),NFLEVG)
 !CALL cuda_gemm('N','N',dim_tabl,int(ISPCOL),dim_tabl,zalpha, &
 !   & ZSIMI,dim_tabl,ZSDIV,dim_tabl,zbeta,ZSDIVP(:,KSTA:KEND),dim_tabl)
-!$acc end host_data
+!!!$acc end host_data
 !!!$acc end data
+
+!$acc host_data use_device(SIMI,ZSDIV,ZSDIVP)
+CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
+  & SIMI,NFLEVG,ZSDIV,NFLEVG,0.0_JPRB,ZSDIVP(:,KSTA:KEND),NFLEVG)
+!$acc end host_data
+
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
 
@@ -345,7 +359,7 @@ IF (LSIDG) THEN
 ELSE
 
   !             Case with NO Stretching :
-!!!non traite pour le moment, on n'y passe pas
+  !!!non traite pour le moment, on n'y passe pas
   IF (LIMPF) THEN
 
     !               Solve complex pentadiagonal system
@@ -357,31 +371,37 @@ ELSE
     !                 Inversion of a diagonal system (Helmholtz equation)
     !                 --> (SIMI*DIVprim(t+dt)).
 
+    !$acc parallel private(JSP,JLEV) present(ZSDIVP,SIVP,YDLAP%RLAPDI,YDLAP%NVALUE)
+    !$acc loop collapse(2)	
     DO JSP=KSTA,KEND
       DO JLEV=1,NFLEVG
         ZSPDIVP(JLEV,JSP)=ZSDIVP(JLEV,JSP)&
          & /(1.0_JPRB-ZBDT2*SIVP(JLEV)*YDLAP%RLAPDI(YDLAP%NVALUE(JSP+IOFF)))  
       ENDDO
     ENDDO
+    !$acc end parallel
   ENDIF
 ENDIF
 
 !           Vertical eigenmodes space --> current space.
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Calls SGEMMX in parallel region
-!!!$acc update host(zsdiv,zsdivp)
+!!!$acc update host(SIMO,zspdivp,pspdivg)
 !!!CALL MXMAOP(SIMO,1,NFLEVG,ZSPDIVP(:,KSTA:KEND),1,NFLEVG,PSPDIVG(:,KSTA:KEND),1,&
 !!! & NFLEVG,NFLEVG,NFLEVG,ISPCOL)  
-!!!$acc update device(zsdiv,zsdivp)
+!!!$acc update device(SIMO,zspdivp,pspdivg)
 
 
 !$acc host_data use_device(SIMO,ZSPDIVP,PSPDIVG)
+!!!$acc host_data use_device(SIMO,ZSPDIVP,ZSDIV)
 CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
   & SIMO,NFLEVG,ZSPDIVP(:,KSTA:KEND),NFLEVG,0.0_JPRB,PSPDIVG(:,KSTA:KEND),NFLEVG)
+!!  & SIMO,NFLEVG,ZSPDIVP(:,KSTA:KEND),NFLEVG,0.0_JPRB,ZSDIV(:,KSTA:KEND),NFLEVG)
 !$acc end host_data
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
 
+!!non parcourue dans le cas test
 IF (LSIDG) THEN
 
   !           ZSPDIV=(DIVprim(t+dt)) --> ZSPDIVG=(GM**2 * DIVprim(t+dt)) .
@@ -409,6 +429,7 @@ IF (LSIDG) THEN
     ISE=KSTA+2*(JN-KM)
     ZHELP(:,ISE:ISE+1)=ZSPDIVPL(:,JN,1:2)
   ENDDO
+!!!parcourue dans le cas test
 ELSE
 
   !       ZSPDIV=(DIVprim(t+dt)) --> ZSPDIVG=(GMBAR**2 * DIVprim(t+dt)) .
