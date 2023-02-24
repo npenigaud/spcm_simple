@@ -107,11 +107,15 @@ ASSOCIATE(SIALPH=>YDDYN%SIALPH, SILNPR=>YDDYN%SILNPR, SIRPRG=>YDDYN%SIRPRG)
 
 CLOPER='IBOT'
 
+print *,"apres entree sigam"
+
 IF (YDCVER%LVERTFE) THEN
 
-  IF (YDCVER%LVFE_COMPATIBLE) CLOPER='INTG'
+print *,"debut boucle LVFERTE"
 
-!$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) present(pt)
+  IF (YDCVER%LVFE_COMPATIBLE) CLOPER='INTG'
+!$acc data create(zsphi,zout)
+!$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) present(pt,zsphi)
 !!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
   DO JLEV=1,KLEV
@@ -124,11 +128,22 @@ IF (YDCVER%LVERTFE) THEN
 !!!!!$OMP END DO
 !$acc END PARALLEL
 
-  ZSPHI(:,0)=0.0_JPRB
-  ZSPHI(:,KLEV+1)=0.0_JPRB
+  !!initial 2 lignes
+  !!ZSPHI(:,0)=0.0_JPRB
+  !!ZSPHI(:,KLEV+1)=0.0_JPRB
+  !!modif 7 lignes
+!$acc parallel private(jspec) present(zsphi)
+!$acc loop gang
+do jspec=1,kspec
+  ZSPHI(jspec,0)=0.0_JPRB
+  ZSPHI(jspec,KLEV+1)=0.0_JPRB
+enddo
+!$acc end parallel
   CALL VERDISINT(YDVFE,YDCVER,CLOPER,'11',KSPEC,1,KSPEC,KLEV,ZSPHI,ZOUT,KCHUNK=YDGEOMETRY%YRDIM%NPROMA)
 
-!$acc PARALLEL PRIVATE(JLEV,JSPEC) present(psp,pd)
+print *,"apres verdisint"
+
+!$acc PARALLEL PRIVATE(JLEV,JSPEC) present(psp,pd,zout)
 !!!!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
   DO JLEV=1,KLEV
@@ -139,7 +154,7 @@ IF (YDCVER%LVERTFE) THEN
   ENDDO
 !!!!!$OMP END DO
 !$acc END PARALLEL
-
+!$acc end data
 ELSE
   ZSPHIX(KLEV, :)=0.0_JPRB
 

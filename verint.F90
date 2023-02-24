@@ -71,6 +71,7 @@ USE PARKIND1  ,ONLY : JPRD, JPIM     ,JPRB
 USE YOMHOOK   ,ONLY : LHOOK,   DR_HOOK, JPHOOK
 USE YOMLUN   , ONLY : NULERR
 USE OML_MOD  , ONLY : OML_IN_PARALLEL
+use cublas
 
 IMPLICIT NONE
 
@@ -95,12 +96,12 @@ IF (KSTART > KPROF) RETURN
 IF (LHOOK) CALL DR_HOOK('VERINT',0,ZHOOK_HANDLE)
 
 #ifdef PARKIND1_SINGLE    
-  print *,"branche 1"    
+  !!non parcouru cas test    
   ALLOCATE(ZOUT(KPROMA,KLEVOUT))
   ALLOCATE(ZIN(KPROMA,KLEVIN))
   ZIN(KSTART:KPROF,:) = PIN(KSTART:KPROF,:)
 #else
-  print *,"branche 2"
+  !!parcouru cas test
   ZOUT => POUT
   ZIN => PIN
 #endif
@@ -125,10 +126,14 @@ ELSE
 !$OMP PARALLEL DO PRIVATE(JROF,JLEN)
     DO JROF=KSTART,KPROF,KCHUNK
       JLEN=MIN(KCHUNK,KPROF-JROF+1)
-      CALL DGEMM('N','T',JLEN,KLEVOUT,KLEVIN, &
+!$acc host_data use_device(ZIN,ZOUT,PINTE)
+      CALL cublasDGEMM('N','T',JLEN,KLEVOUT,KLEVIN, &
            & 1.0_JPRD,ZIN(JROF,1),KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT(JROF,1),KPROMA)
+!$acc end host_data
     ENDDO
 !$OMP END PARALLEL DO
+
+
   !!non parcouru car .true. ci-dessus
   else
     ! Chunking across KLEVOUT
@@ -147,13 +152,16 @@ ENDIF
 !!!parcouru pour sigam, cas test
 IF(KTYPE == 1) THEN
   ! warning: dependence on last level in OMP case, last level is done separately
-!$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(JLEV,JROF) if (.not.lpar)
+!!!$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(JLEV,JROF) if (.not.lpar)
+!$acc PARALLEL PRIVATE(JLEV,JROF) if (.not.lpar) present(pout,zout)
+!$acc loop collapse(2)
   DO JLEV=1,KLEVOUT-1
     DO JROF=KSTART,KPROF
       POUT(JROF,JLEV)=ZOUT(JROF,JLEV)-ZOUT(JROF,KLEVOUT)
     ENDDO
   ENDDO
-!$OMP END PARALLEL DO
+!!!!$OMP END PARALLEL DO
+!$acc end parallel
 
   ! last level substraction summarizes to zeroing
   POUT(KSTART:KPROF,KLEVOUT)=0._JPRB

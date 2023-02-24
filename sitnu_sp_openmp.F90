@@ -105,8 +105,8 @@ ASSOCIATE(SIALPH=>YDDYN%SIALPH, SIDELP=>YDDYN%SIDELP, SILNPR=>YDDYN%SILNPR, SIRD
 !              ----------------------------------------
 
 IF(YDCVER%LVERTFE) THEN
-
-!$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH)
+!$acc data create(zsdiv,zout)
+!$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) present(zsdiv,pd)
 !!!!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
   DO JLEV=1,KLEV
@@ -121,12 +121,21 @@ IF(YDCVER%LVERTFE) THEN
 
   IF (KSPEC>=1) THEN
 !DEC$ IVDEP
-    ZSDIV(1:KSPEC,0)=0.0_JPRB
-    ZSDIV(1:KSPEC,KLEV+1)=0.0_JPRB
+    !!version d origine 2 lignes ci dessous
+    !!ZSDIV(1:KSPEC,0)=0.0_JPRB
+    !!ZSDIV(1:KSPEC,KLEV+1)=0.0_JPRB
+    !!version modifiee 7 lignes ci-dessous
+    !$acc parallel private(jspec) present(zsdiv)
+    !$acc loop gang
+    do jspec=1,kspec
+      ZSDIV(jspec,0)=0.0_JPRB
+      ZSDIV(jspec,KLEV+1)=0.0_JPRB
+    enddo
+    !$acc end parallel
     CALL VERDISINT(YDVFE,YDCVER,'ITOP','11',KSPEC,1,KSPEC,KLEV,ZSDIV,ZOUT,KCHUNK=YDGEOMETRY%YRDIM%NPROMA)
   ENDIF
 
-!$acc PARALLEL PRIVATE(JLEV,JSPEC,ZREC) present(pt)
+!$acc PARALLEL PRIVATE(JLEV,JSPEC,ZREC) present(pt,zout)
 !!!!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
   DO JLEV=1,KLEV
@@ -141,7 +150,7 @@ IF(YDCVER%LVERTFE) THEN
   DO JSPEC=1,KSPEC
     PSP(JSPEC)=ZOUT(JSPEC,KLEV)*SIRPRN
   ENDDO
-
+!$acc end data
 ELSE
 
   ZSDIVX(0, :)=0.0_JPRB
