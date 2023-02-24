@@ -108,7 +108,6 @@ IF (LHOOK) CALL DR_HOOK('VERINT',0,ZHOOK_HANDLE)
 
 LPAR = OML_IN_PARALLEL()
 
-!!print *,"LPAR : ",LPAR
 !!non parcouru dans cas test
 IF (LPAR) THEN
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_1',0,ZHOOK_HANDLE_XGEMM)
@@ -164,7 +163,15 @@ IF(KTYPE == 1) THEN
 !$acc end parallel
 
   ! last level substraction summarizes to zeroing
-  POUT(KSTART:KPROF,KLEVOUT)=0._JPRB
+  !!version initiale
+  !!POUT(KSTART:KPROF,KLEVOUT)=0._JPRB
+  !! nouvelle version 6 lignes ci-dessous ; autre initialisation sur GPU ?
+  !$acc PARALLEL PRIVATE(JROF) present(pout)
+  !$acc loop gang
+  do jrof=kstart,kprof
+    pout(jrof,klevout)=0._JPRB
+  enddo
+  !$acc end parallel
 !!non parcouru cas test
 ELSEIF (KTYPE /= 0) THEN
   WRITE(NULERR,*) ' INVALID KTYPE IN VERINT =',KTYPE

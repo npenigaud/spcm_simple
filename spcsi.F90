@@ -103,9 +103,6 @@ REAL(KIND=JPRB)   ,INTENT(IN), OPTIONAL :: PSPAUXG(:,:)
 REAL(KIND=JPRB), ALLOCATABLE :: ZSDIVP (:,:)
 REAL(KIND=JPRB), ALLOCATABLE :: ZSPDIVP(:,:)
 
-!!contournement bug 24 2
-!!REAL(KIND=JPRB), ALLOCATABLE :: ZSPDIVGINT(:,:)
-
 REAL(KIND=JPRB) :: ZSDIV  (YDGEOMETRY%YRDIMV%NFLEVG,KSTA:KEND)
 REAL(KIND=JPRB) :: ZHELP  (YDGEOMETRY%YRDIMV%NFLEVG,KSTA:KEND)
 REAL(KIND=JPRB) :: ZST    (YDGEOMETRY%YRDIMV%NFLEVG,KSTA:KEND) 
@@ -118,12 +115,6 @@ INTEGER(KIND=JPIM) :: II, IN, IOFF, IS0, IS02, ISE, ISPCOL, JLEV, JN, JSP
 
 REAL(KIND=JPRB) :: ZBDT, ZBDT2
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
-
-!!!integer::dim_tabl
-!!!REAL (KIND=JPRB) :: ZALPHA, ZBETA
-!!!REAL (KIND=JPRB), POINTER :: ZSIMI (:,:)
-!!!REAL (KIND=JPRB), POINTER :: ZSIMO (:,:)
-
 
 !     ------------------------------------------------------------------
 
@@ -166,7 +157,7 @@ ENDIF
 
 !*       1.    MEMORY TRANSFER.
 !              ----------------
-
+!!faux cas test
 IF (LRSIDDH) THEN
   ! DDH memory transfer
   IF (LIMPF) PSPTNDSI_VORG(1:NFLEVG,KSTA:KEND)=-PSPVORG(1:NFLEVG,KSTA:KEND)
@@ -183,8 +174,6 @@ ENDIF
 ALLOCATE(ZSDIVP(NFLEVG,MAX(NSPEC2V,NSPEC2VF)))
 ALLOCATE(ZSPDIVP(NFLEVG,MAX(NSPEC2V,NSPEC2VF)))
 
-!!contournement bug 24 2
-!!allocate(ZSPDIVGINT(1:NFLEVG,KSTA:KEND))
 
 !*        2.1  Preliminary initialisations.
 
@@ -198,20 +187,10 @@ ISPCOL=KEND-KSTA+1
 ZBDT=RBTS2*TDT
 ZBDT2=(ZBDT*RSTRET)**2
 
-!!2.2 affichage des pointeurs
-!!print *,"LSIDG : ",LSIDG
-!!print *,"LDONEM : ",LDONEM
-!!print *,"LIMPF : ",LIMPF
-!!print *,"LRSIDDH : ",LRSIDDH
-
 !*        2.3  Computes right-hand side of Helmholtz equation.
  
 !$acc data copy(pspdivg,psptg,pspspg)
 !$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
-!!!!contournement bug 24 2
-!!!$acc data copy(pspdivg,psptg,pspspg) create(zspdivgint)
-!!!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp) 
-
 
 !!faux cas test
 if (limpf) then 
@@ -219,7 +198,7 @@ if (limpf) then
 end if
 
 IF( .NOT.LDONEM ) CALL GSTATS(1655,0) ! Main routines and loops in SIGAM chain are parallel
-print *,"avant entree  dans sigam"
+
 CALL SIGAM_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZSDIV,PSPTG(:,KSTA:KEND),PSPSPG(KSTA:KEND))
 
 IF( .NOT.LDONEM ) CALL GSTATS(1655,1)
@@ -288,29 +267,10 @@ IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Call to SGEMMX Parallelised
 
-!!!zalpha = 1.0_JPRB
-!!!zbeta = 0.0_JPRB
-
 !!$acc update host(zsdiv,zsdivp)
 !!CALL MXMAOP(SIMI,1,NFLEVG,ZSDIV,1,NFLEVG,ZSDIVP(:,KSTA:KEND),1,NFLEVG,&
  !!& NFLEVG,NFLEVG,ISPCOL) 
 !!!$acc update device(zsdiv,zsdivp)
-
-
-!!dim_tabl=int(YDGEOMETRY%YRDIMV%NFLEVG)
-!!$acc data copy(ZSDIVP)
-!!$acc host_data use_device(ZSIMI,ZSDIV,ZSDIVP)
-!!!$acc host_data use_device(SIMI,ZSDIV,ZSDIVP)
-!CALL cublasDgemm ('N','N',dim_tabl,int(ISPCOL),dim_tabl,1.0D0, &
-!  & YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,0.0D0,ZSDIVP(:,KSTA:KEND),dim_tabl)
-!CALL cublasDgemm ('N','N',dim_tabl,int(ISPCOL),dim_tabl,zalpha, &
-!  & YDDYN%SIMI,dim_tabl,ZSDIV,dim_tabl,zbeta,ZSDIVP(:,KSTA:KEND),dim_tabl)
-!!!CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
-!!!  & SIMI,NFLEVG,ZSDIV,NFLEVG,0.0_JPRB,ZSDIVP(:,KSTA:KEND),NFLEVG)
-!CALL cuda_gemm('N','N',dim_tabl,int(ISPCOL),dim_tabl,zalpha, &
-!   & ZSIMI,dim_tabl,ZSDIV,dim_tabl,zbeta,ZSDIVP(:,KSTA:KEND),dim_tabl)
-!!!$acc end host_data
-!!!$acc end data
 
 !$acc host_data use_device(SIMI,ZSDIV,ZSDIVP)
 CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
@@ -405,25 +365,10 @@ IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Calls SGEMMX in parallel region
 !!! & NFLEVG,NFLEVG,NFLEVG,ISPCOL)  
 !!!$acc update device(SIMO,zspdivp,pspdivg)
 
-
-!!!contournement bug 24 2
 !$acc host_data use_device(SIMO,ZSPDIVP,PSPDIVG)
-!!!$acc host_data use_device(SIMO,ZSPDIVP,ZSPDIVGINT)
 CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
-!!  & SIMO,NFLEVG,ZSPDIVP(:,KSTA:KEND),NFLEVG,0.0_JPRB,ZSPDIVGINT(:,KSTA:KEND),NFLEVG)
   & SIMO,NFLEVG,ZSPDIVP(1,KSTA),NFLEVG,0.0_JPRB,PSPDIVG(1,KSTA),NFLEVG)
-!!  & SIMO,NFLEVG,ZSPDIVP(:,KSTA:KEND),NFLEVG,0.0_JPRB,PSPDIVG(:,KSTA:KEND),NFLEVG)
 !$acc end host_data
-
-!!!!contournement bug 24 2
-!!    !$acc parallel private(JSP,JLEV) present(PSPDIVG,ZSPDIVGINT)
-!!    !$acc loop collapse(2)	
-!!    DO JSP=KSTA,KEND
-!!      DO JLEV=1,NFLEVG
-!!        PSPDIVG(JLEV,JSP)=ZSPDIVGINT(JLEV,JSP)  
-!!      ENDDO
-!!    ENDDO
-!!    !$acc end parallel
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
 
@@ -509,8 +454,6 @@ end if
 
 DEALLOCATE(ZSDIVP)
 DEALLOCATE(ZSPDIVP)
-!!contournement bug 24 2
-!!deallocate(ZSPDIVGINT)
 
 !     ------------------------------------------------------------------
 

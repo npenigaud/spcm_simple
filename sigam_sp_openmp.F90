@@ -107,11 +107,7 @@ ASSOCIATE(SIALPH=>YDDYN%SIALPH, SILNPR=>YDDYN%SILNPR, SIRPRG=>YDDYN%SIRPRG)
 
 CLOPER='IBOT'
 
-print *,"apres entree sigam"
-
 IF (YDCVER%LVERTFE) THEN
-
-print *,"debut boucle LVFERTE"
 
   IF (YDCVER%LVFE_COMPATIBLE) CLOPER='INTG'
 !$acc data create(zsphi,zout)
