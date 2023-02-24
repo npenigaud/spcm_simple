@@ -94,17 +94,21 @@ IF (KSTART > KPROF) RETURN
 
 IF (LHOOK) CALL DR_HOOK('VERINT',0,ZHOOK_HANDLE)
 
-#ifdef PARKIND1_SINGLE        
+#ifdef PARKIND1_SINGLE    
+  print *,"branche 1"    
   ALLOCATE(ZOUT(KPROMA,KLEVOUT))
   ALLOCATE(ZIN(KPROMA,KLEVIN))
   ZIN(KSTART:KPROF,:) = PIN(KSTART:KPROF,:)
 #else
+  print *,"branche 2"
   ZOUT => POUT
   ZIN => PIN
 #endif
 
 LPAR = OML_IN_PARALLEL()
 
+!!print *,"LPAR : ",LPAR
+!!non parcouru dans cas test
 IF (LPAR) THEN
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_1',0,ZHOOK_HANDLE_XGEMM)
 
@@ -112,6 +116,7 @@ IF (LPAR) THEN
        & 1.0_JPRD,ZIN,KPROMA,PINTE,klevout,0.0_JPRD,ZOUT,KPROMA)  
 
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_1',1,ZHOOK_HANDLE_XGEMM)
+!!parcouru dans cas test
 ELSE
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_2',0,ZHOOK_HANDLE_XGEMM)
 
@@ -124,6 +129,7 @@ ELSE
            & 1.0_JPRD,ZIN(JROF,1),KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT(JROF,1),KPROMA)
     ENDDO
 !$OMP END PARALLEL DO
+  !!non parcouru car .true. ci-dessus
   else
     ! Chunking across KLEVOUT
 !$OMP PARALLEL DO PRIVATE(JLEV,JLEN)
@@ -138,6 +144,7 @@ ELSE
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_2',1,ZHOOK_HANDLE_XGEMM)
 ENDIF
 
+!!!parcouru pour sigam, cas test
 IF(KTYPE == 1) THEN
   ! warning: dependence on last level in OMP case, last level is done separately
 !$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(JLEV,JROF) if (.not.lpar)
@@ -150,9 +157,11 @@ IF(KTYPE == 1) THEN
 
   ! last level substraction summarizes to zeroing
   POUT(KSTART:KPROF,KLEVOUT)=0._JPRB
+!!non parcouru cas test
 ELSEIF (KTYPE /= 0) THEN
   WRITE(NULERR,*) ' INVALID KTYPE IN VERINT =',KTYPE
   CALL ABOR1(' VERINT: ABOR1 CALLED')
+!!non parcouru cas test
 else if (llsingle) then
 !$OMP PARALLEL DO SCHEDULE(STATIC) if (.not.lpar)
   DO JLEV=1,KLEVOUT

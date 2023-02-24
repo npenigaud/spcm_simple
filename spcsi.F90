@@ -103,6 +103,9 @@ REAL(KIND=JPRB)   ,INTENT(IN), OPTIONAL :: PSPAUXG(:,:)
 REAL(KIND=JPRB), ALLOCATABLE :: ZSDIVP (:,:)
 REAL(KIND=JPRB), ALLOCATABLE :: ZSPDIVP(:,:)
 
+!!contournement bug 24 2
+REAL(KIND=JPRB), ALLOCATABLE :: ZSPDIVGINT(:,:)
+
 REAL(KIND=JPRB) :: ZSDIV  (YDGEOMETRY%YRDIMV%NFLEVG,KSTA:KEND)
 REAL(KIND=JPRB) :: ZHELP  (YDGEOMETRY%YRDIMV%NFLEVG,KSTA:KEND)
 REAL(KIND=JPRB) :: ZST    (YDGEOMETRY%YRDIMV%NFLEVG,KSTA:KEND) 
@@ -180,6 +183,9 @@ ENDIF
 ALLOCATE(ZSDIVP(NFLEVG,MAX(NSPEC2V,NSPEC2VF)))
 ALLOCATE(ZSPDIVP(NFLEVG,MAX(NSPEC2V,NSPEC2VF)))
 
+!!contournement bug 24 2
+allocate(ZSPDIVGINT(1:NFLEVG,KSTA:KEND))
+
 !*        2.1  Preliminary initialisations.
 
 IF (LDONEM) THEN
@@ -199,12 +205,15 @@ ZBDT2=(ZBDT*RSTRET)**2
 !!print *,"LRSIDDH : ",LRSIDDH
 
 !*        2.3  Computes right-hand side of Helmholtz equation.
-
-!!!$acc data copy(pspdivg(NFLEVG,MAX(NSPEC2V,NSPEC2VF)),psptg(NFLEVG,MAX(NSPEC2V,NSPEC2VF)),pspspg(MAX(NSPEC2V,NSPEC2VF))) 
-!!!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp(NFLEVG,MAX(NSPEC2V,NSPEC2VF)),zspdivp(NFLEVG,MAX(NSPEC2V,NSPEC2VF))) 
-!$acc data copy(pspdivg,psptg,pspspg)
+ 
+!!!$acc data copy(pspdivg,psptg,pspspg)
+!!!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
+!!!!contournement bug 24 2
+!$acc data copy(pspdivg,psptg,pspspg) create(zspdivgint)
 !$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp) 
 
+
+!!faux cas test
 if (limpf) then 
 !$acc enter data copyin(pspauxg)
 end if
@@ -216,6 +225,7 @@ IF( .NOT.LDONEM ) CALL GSTATS(1655,1)
 
 IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
 
+!!faux cas test
 IF (LSIDG) THEN
   IF (KM > 0) THEN
 !$acc PARALLEL PRIVATE(JSP,JLEV,IN) present(zsdiv,pspdivg,YDLAP%NVALUE,YDLAP%RLAPIN)
@@ -241,7 +251,7 @@ IF (LSIDG) THEN
 !$acc END PARALLEL
   ENDIF
 ELSE
-
+!!parcouru cas test
   ! Case of No Stretching
 !$acc PARALLEL PRIVATE(JSP,JLEV,IN) present(zsdiv,pspdivg,YDLAP%NVALUE,YDLAP%RLAPDI)
 !$acc loop gang
@@ -257,6 +267,7 @@ ENDIF
 
 !        Add [F] * result to rhs of Helmholtz equation
 
+!!faux cas test
 IF (LIMPF) THEN
 !$acc PARALLEL PRIVATE(JSP,JLEV) present(zsdiv,pspauxg)
 !$acc loop gang
@@ -308,6 +319,7 @@ CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
 
+!!faux cas test
 IF (LSIDG) THEN
 
   !             Inversion of two tridiagonal systems (Helmholtz equation)
@@ -357,6 +369,7 @@ IF (LSIDG) THEN
   ENDDO
   !$acc end parallel
 ELSE
+!!parcouru cas test, dans le else
 
   !             Case with NO Stretching :
   !!!non traite pour le moment, on n'y passe pas
@@ -365,7 +378,7 @@ ELSE
     !               Solve complex pentadiagonal system
 
     CALL SPCIMPFSOLVE(YDGEOMETRY,YDCST,YDRIP,YDDYN,.FALSE.,.FALSE.,LDONEM,ZSDIVP,ZSPDIVP)
-
+  !!parcouru cas test
   ELSE
 
     !                 Inversion of a diagonal system (Helmholtz equation)
@@ -392,12 +405,23 @@ IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Calls SGEMMX in parallel region
 !!!$acc update device(SIMO,zspdivp,pspdivg)
 
 
-!$acc host_data use_device(SIMO,ZSPDIVP,PSPDIVG)
-!!!$acc host_data use_device(SIMO,ZSPDIVP,ZSDIV)
+!!!contournement bug 24 2
+!!!$acc host_data use_device(SIMO,ZSPDIVP,PSPDIVG)
+!$acc host_data use_device(SIMO,ZSPDIVP,ZSPDIVGINT)
 CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
-  & SIMO,NFLEVG,ZSPDIVP(:,KSTA:KEND),NFLEVG,0.0_JPRB,PSPDIVG(:,KSTA:KEND),NFLEVG)
-!!  & SIMO,NFLEVG,ZSPDIVP(:,KSTA:KEND),NFLEVG,0.0_JPRB,ZSDIV(:,KSTA:KEND),NFLEVG)
+  & SIMO,NFLEVG,ZSPDIVP(:,KSTA:KEND),NFLEVG,0.0_JPRB,ZSPDIVGINT(:,KSTA:KEND),NFLEVG)
+!!  & SIMO,NFLEVG,ZSPDIVP(:,KSTA:KEND),NFLEVG,0.0_JPRB,PSPDIVG(:,KSTA:KEND),NFLEVG)
 !$acc end host_data
+
+!!!!contournement bug 24 2
+    !$acc parallel private(JSP,JLEV) present(PSPDIVG,ZSPDIVGINT)
+    !$acc loop collapse(2)	
+    DO JSP=KSTA,KEND
+      DO JLEV=1,NFLEVG
+        PSPDIVG(JLEV,JSP)=ZSPDIVGINT(JLEV,JSP)  
+      ENDDO
+    ENDDO
+    !$acc end parallel
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
 
