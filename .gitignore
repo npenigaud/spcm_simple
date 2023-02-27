@@ -11,3 +11,8 @@ stdeo.*
 *.grb
 .mpiauto*
 linux_bind.txt
+
+*.qdrep
+nsys.*.nsys-rep
+nsys.*.sqlite
+

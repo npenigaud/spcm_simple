@@ -110,8 +110,10 @@ CLOPER='IBOT'
 IF (YDCVER%LVERTFE) THEN
 
   IF (YDCVER%LVFE_COMPATIBLE) CLOPER='INTG'
+!$acc data present(pt,psp,pd)
+!$acc data present(ydveta%vfe_rdetah,silnpr,sialph,sirprg,ydveta,ydcst)
 !$acc data create(zsphi,zout)
-!$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) present(pt,zsphi)
+!$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) default(none)
 !!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
   DO JLEV=1,KLEV
@@ -128,7 +130,7 @@ IF (YDCVER%LVERTFE) THEN
   !!ZSPHI(:,0)=0.0_JPRB
   !!ZSPHI(:,KLEV+1)=0.0_JPRB
   !!modif 7 lignes
-!$acc parallel private(jspec) present(zsphi)
+!$acc parallel private(jspec) default(none)
 !$acc loop gang
 do jspec=1,kspec
   ZSPHI(jspec,0)=0.0_JPRB
@@ -139,7 +141,7 @@ enddo
 
 print *,"apres verdisint"
 
-!$acc PARALLEL PRIVATE(JLEV,JSPEC) present(psp,pd,zout)
+!$acc PARALLEL PRIVATE(JLEV,JSPEC) default(none)
 !!!!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
   DO JLEV=1,KLEV
@@ -150,6 +152,8 @@ print *,"apres verdisint"
   ENDDO
 !!!!!$OMP END DO
 !$acc END PARALLEL
+!$acc end data
+!$acc end data
 !$acc end data
 ELSE
   ZSPHIX(KLEV, :)=0.0_JPRB

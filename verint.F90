@@ -108,6 +108,8 @@ IF (LHOOK) CALL DR_HOOK('VERINT',0,ZHOOK_HANDLE)
 
 LPAR = OML_IN_PARALLEL()
 
+!$acc data present(zin,pin,zout,pout,pinte)
+
 !!non parcouru dans cas test
 IF (LPAR) THEN
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_1',0,ZHOOK_HANDLE_XGEMM)
@@ -122,16 +124,28 @@ ELSE
 
   if (.true.) then
     ! Chunking across KPROMA
+!!$OMP PARALLEL DO PRIVATE(JROF,JLEN)
+!    DO JROF=KSTART,KPROF,KCHUNK
+!      JLEN=MIN(KCHUNK,KPROF-JROF+1)
+!!$acc host_data use_device(ZIN,ZOUT,PINTE)
+!      CALL cublasDGEMM('N','T',JLEN,KLEVOUT,KLEVIN, &
+!           & 1.0_JPRD,ZIN(JROF,1),KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT(JROF,1),KPROMA)
+!!$acc end host_data
+!    ENDDO
+!!$OMP END PARALLEL DO
+
+#if defined(_OPENACC)
+      CALL cublasDGEMM('N','T',KPROMA,KLEVOUT,KLEVIN, &
+           & 1.0_JPRD,ZIN,KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT,KPROMA)
+#else
 !$OMP PARALLEL DO PRIVATE(JROF,JLEN)
     DO JROF=KSTART,KPROF,KCHUNK
       JLEN=MIN(KCHUNK,KPROF-JROF+1)
-!$acc host_data use_device(ZIN,ZOUT,PINTE)
-      CALL cublasDGEMM('N','T',JLEN,KLEVOUT,KLEVIN, &
+      CALL DGEMM('N','T',JLEN,KLEVOUT,KLEVIN, &
            & 1.0_JPRD,ZIN(JROF,1),KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT(JROF,1),KPROMA)
-!$acc end host_data
     ENDDO
 !$OMP END PARALLEL DO
-
+#endif
 
   !!non parcouru car .true. ci-dessus
   else
@@ -152,7 +166,8 @@ ENDIF
 IF(KTYPE == 1) THEN
   ! warning: dependence on last level in OMP case, last level is done separately
 !!!$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(JLEV,JROF) if (.not.lpar)
-!$acc PARALLEL PRIVATE(JLEV,JROF) if (.not.lpar) present(pout,zout)
+#if defined(_OPENACC)
+!$acc PARALLEL PRIVATE(JLEV,JROF) if (.not.lpar) default(none)
 !$acc loop collapse(2)
   DO JLEV=1,KLEVOUT-1
     DO JROF=KSTART,KPROF
@@ -162,16 +177,24 @@ IF(KTYPE == 1) THEN
 !!!!$OMP END PARALLEL DO
 !$acc end parallel
 
-  ! last level substraction summarizes to zeroing
-  !!version initiale
-  !!POUT(KSTART:KPROF,KLEVOUT)=0._JPRB
-  !! nouvelle version 6 lignes ci-dessous ; autre initialisation sur GPU ?
-  !$acc PARALLEL PRIVATE(JROF) present(pout)
+  !$acc PARALLEL PRIVATE(JROF) default(none)
   !$acc loop gang
   do jrof=kstart,kprof
     pout(jrof,klevout)=0._JPRB
   enddo
   !$acc end parallel
+#else
+!$OMP PARALLEL DO SCHEDULE(STATIC) PRIVATE(JLEV,JROF) if (.not.lpar)
+  DO JLEV=1,KLEVOUT-1
+    DO JROF=KSTART,KPROF
+      POUT(JROF,JLEV)=ZOUT(JROF,JLEV)-ZOUT(JROF,KLEVOUT)
+    ENDDO
+  ENDDO
+!$OMP END PARALLEL DO
+
+POUT(KSTART:KPROF,KLEVOUT)=0._JPRB
+#endif
+
 !!non parcouru cas test
 ELSEIF (KTYPE /= 0) THEN
   WRITE(NULERR,*) ' INVALID KTYPE IN VERINT =',KTYPE
@@ -184,6 +207,7 @@ else if (llsingle) then
   ENDDO
 !$OMP END PARALLEL DO
 ENDIF
+!$acc end data
 
 IF (LLSINGLE) THEN
   DEALLOCATE(ZOUT)
