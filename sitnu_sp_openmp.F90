@@ -107,9 +107,14 @@ ASSOCIATE(SIALPH=>YDDYN%SIALPH, SIDELP=>YDDYN%SIDELP, SILNPR=>YDDYN%SILNPR, SIRD
 IF(YDCVER%LVERTFE) THEN
 !$acc data present(pd,psp,pt,sidelp,sitlaf,sitr,ydveta,ydcst,sirprn)
 !$acc data create(zsdiv,zout)
+
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) default(none)
-!!!!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
+#else
+!$OMP PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH)
+!$OMP DO SCHEDULE(STATIC)
+#endif
   DO JLEV=1,KLEV
     ZDETAH=YDVETA%VFE_RDETAH(JLEV)
     !$acc loop vector
@@ -117,15 +122,16 @@ IF(YDCVER%LVERTFE) THEN
       ZSDIV(JSPEC,JLEV)=PD(JLEV,JSPEC)*SIDELP(JLEV)*ZDETAH
     ENDDO
   ENDDO
-!!!!!$OMP END DO
+#if defined(_OPENACC)
 !$acc END PARALLEL
+#else
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
 
   IF (KSPEC>=1) THEN
-!DEC$ IVDEP
-    !!version d origine 2 lignes ci dessous
-    !!ZSDIV(1:KSPEC,0)=0.0_JPRB
-    !!ZSDIV(1:KSPEC,KLEV+1)=0.0_JPRB
-    !!version modifiee 7 lignes ci-dessous
+
+#if defined(_OPENACC)
     !$acc parallel private(jspec) default(none)
     !$acc loop gang
     do jspec=1,kspec
@@ -133,12 +139,21 @@ IF(YDCVER%LVERTFE) THEN
       ZSDIV(jspec,KLEV+1)=0.0_JPRB
     enddo
     !$acc end parallel
+#else
+    ZSDIV(1:KSPEC,0)=0.0_JPRB
+    ZSDIV(1:KSPEC,KLEV+1)=0.0_JPRB
+#endif
+
     CALL VERDISINT(YDVFE,YDCVER,'ITOP','11',KSPEC,1,KSPEC,KLEV,ZSDIV,ZOUT,KCHUNK=YDGEOMETRY%YRDIM%NPROMA)
   ENDIF
 
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,ZREC) default(none)
-!!!!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
+#else
+!$OMP PARALLEL PRIVATE(JLEV,JSPEC,ZREC)
+!$OMP DO SCHEDULE(STATIC)
+#endif
   DO JLEV=1,KLEV
   !$acc loop vector
     DO JSPEC=1,KSPEC
@@ -146,32 +161,36 @@ IF(YDCVER%LVERTFE) THEN
       PT(JLEV,JSPEC)=YDCST%RKAPPA*SITR*ZOUT(JSPEC,JLEV-1)*ZREC
     ENDDO
   ENDDO
-!!!!$OMP END DO
+#if defined(_OPENACC)
 !$acc END PARALLEL
+#else
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
 !$acc parallel loop private(jspec) default(none)
   DO JSPEC=1,KSPEC
     PSP(JSPEC)=ZOUT(JSPEC,KLEV)*SIRPRN
   ENDDO
 !$acc end parallel
+
 !$acc end data
 !$acc end data
 ELSE
 
   ZSDIVX(0, :)=0.0_JPRB
 
-!$acc PARALLEL PRIVATE(JLEV,JSPEC) present(pt,pd)
-!!!!$OMP DO SCHEDULE(STATIC)
-!$acc loop gang
+!$OMP PARALLEL PRIVATE(JLEV,JSPEC)
+!$OMP DO SCHEDULE(STATIC)
   DO JSPEC=1,KSPEC
-  !$acc loop vector
     DO JLEV=1,KLEV
       ZSDIVX(JLEV, JSPEC)=ZSDIVX(JLEV-1, JSPEC)+PD(JLEV,JSPEC)*SIDELP(JLEV)
       PT(JLEV,JSPEC)=YDCST%RKAPPA*SITR*(SIRDEL(JLEV)*SILNPR(JLEV)*ZSDIVX(JLEV-1, JSPEC)&
        & +SIALPH(JLEV)*PD(JLEV,JSPEC))
     ENDDO
   ENDDO
-!!!!$OMP END DO
-!$acc END PARALLEL
+!$OMP END DO
+!$OMP END PARALLEL
 
   DO JSPEC=1,KSPEC
     PSP(JSPEC)=ZSDIVX(KLEV, JSPEC)*SIRPRN

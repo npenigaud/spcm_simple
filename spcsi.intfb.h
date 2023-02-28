@@ -12,7 +12,9 @@ USE YOMDYN       , ONLY : TDYN
 USE YOMLDDH      , ONLY : TLDDH
 USE YOMRIP       , ONLY : TRIP
 USE YOMCST       , ONLY : TCST
+#if defined(_OPENACC)
 use cublas
+#endif
 TYPE(GEOMETRY)    ,INTENT(IN)    :: YDGEOMETRY
 TYPE(TCST)        ,INTENT(IN)    :: YDCST
 TYPE(TDYN)        ,INTENT(IN), TARGET    :: YDDYN

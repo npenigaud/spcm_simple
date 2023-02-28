@@ -196,9 +196,11 @@ ZBDT2=(ZBDT*RSTRET)**2
 !$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
 
 !!faux cas test
+#if defined(_OPENACC)
 if (limpf) then 
 !$acc enter data copyin(pspauxg)
 end if
+#endif
 
 IF( .NOT.LDONEM ) CALL GSTATS(1655,0) ! Main routines and loops in SIGAM chain are parallel
 
@@ -211,10 +213,12 @@ IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
 !!faux cas test
 IF (LSIDG) THEN
   IF (KM > 0) THEN
-!!!!comment le faire ??
-!$OMP PARALLEL DO PRIVATE(JSP,JLEV,IN)
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV,IN) default(none)
-  !$acc loop gang
+!$acc loop gang
+#else
+!$OMP PARALLEL DO PRIVATE(JSP,JLEV,IN)
+#endif
     DO JSP=KSTA,KEND
     !$acc loop vector
       DO JLEV=1,NFLEVG
@@ -222,11 +226,18 @@ IF (LSIDG) THEN
         ZSDIV(JLEV,JSP)=YDLAP%RLAPIN(IN)*PSPDIVG(JLEV,JSP)-ZBDT*ZSDIV(JLEV,JSP)      
       ENDDO
     ENDDO
+#if defined(_OPENACC)
 !$acc END PARALLEL 
+#else
 !$OMP END PARALLEL DO
+#endif
   ELSE
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV,IN) default(none)
    !$acc loop gang
+#else
+!$OMP PARALLEL DO PRIVATE(JSP,JLEV,IN)
+#endif
     DO JSP=KSTA,KEND
     !$acc loop vector
       DO JLEV=1,NFLEVG
@@ -234,13 +245,21 @@ IF (LSIDG) THEN
         ZSDIV(JLEV,JSP)=PSPDIVG(JLEV,JSP)-ZBDT*YDLAP%RLAPDI(IN)*ZSDIV(JLEV,JSP)  
       ENDDO
     ENDDO
+#if defined(_OPENACC)
 !$acc END PARALLEL
+#else
+!$OMP END PARALLEL DO
+#endif
   ENDIF
 ELSE
 !!parcouru cas test
   ! Case of No Stretching
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV,IN) default(none)
 !$acc loop gang
+#else
+!$OMP PARALLEL DO PRIVATE(JSP,JLEV,IN)
+#endif
   DO JSP=KSTA,KEND
   !$acc loop vector
     DO JLEV=1,NFLEVG
@@ -248,7 +267,11 @@ ELSE
       ZSDIV(JLEV,JSP)=PSPDIVG(JLEV,JSP)-ZBDT*YDLAP%RLAPDI(IN)*ZSDIV(JLEV,JSP)
     ENDDO
   ENDDO
+#if defined(_OPENACC)
 !$acc END PARALLEL
+#else
+!$OMP END PARALLEL DO
+#endif
 ENDIF
 
 !        Add [F] * result to rhs of Helmholtz equation
@@ -256,15 +279,23 @@ ENDIF
 !!faux cas test
 IF (LIMPF) THEN
 !!$acc PARALLEL PRIVATE(JSP,JLEV) default(none)
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV)
 !$acc loop gang
+#else
+!$OMP PARALLEL DO PRIVATE(JSP,JLEV)
+#endif
   DO JSP=KSTA,KEND
   !$acc loop vector
     DO JLEV=1,NFLEVG
       ZSDIV(JLEV,JSP)=ZSDIV(JLEV,JSP) + PSPAUXG(JLEV,JSP)
     ENDDO
   ENDDO
+#if defined(_OPENACC)
 !$acc END PARALLEL 
+#else
+!$OMP END PARALLEL DO
+#endif
 ENDIF
 IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
 
@@ -286,7 +317,7 @@ CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
 !$acc end host_data
 #else
 CALL MXMAOP(SIMI,1,NFLEVG,ZSDIV,1,NFLEVG,ZSDIVP(:,KSTA:KEND),1,NFLEVG,&
- !!& NFLEVG,NFLEVG,ISPCOL)
+ & NFLEVG,NFLEVG,ISPCOL)
 #endif
 
 
@@ -304,18 +335,13 @@ IF (LSIDG) THEN
   IS02=0
   II=MIN(KM,1)+1
   
-  !!! traite comment ?
   ZSDIVPL(:,:,:)=0.0_JPRB
   ZSPDIVPL(:,:,:)=0.0_JPRB
   
-  !!$acc parallel private(JN,ISE) default(none)
-  !$acc parallel private(JN,ISE)
-  !$acc loop gang
   DO JN=KM,NSMAX
     ISE=KSTA+2*(JN-KM)
     ZSDIVPL(:,JN,1:2)=ZSDIVP(:,ISE:ISE+1)
   ENDDO
-  !$acc end parallel
   
   IF (KM > 0) THEN
 
@@ -335,14 +361,12 @@ IF (LSIDG) THEN
      & SIHEG(1,IS0+1,1),SIHEG2(1,IS02+1,2),&
      & SIHEG2(1,IS02+1,3),ZSDIVPL,ZSPDIVPL)  
   ENDIF
-!!$acc parallel private(JN,ISE) default(none)
-!$acc parallel private(JN,ISE)
-  !$acc loop gang
+
   DO JN=KM,NSMAX
     ISE=KSTA+2*(JN-KM)
     ZSPDIVP(:,ISE:ISE+1)=ZSPDIVPL(:,JN,1:2)
   ENDDO
-  !$acc end parallel
+
 ELSE
 !!parcouru cas test, dans le else
 
@@ -358,7 +382,6 @@ ELSE
 
     !                 Inversion of a diagonal system (Helmholtz equation)
     !                 --> (SIMI*DIVprim(t+dt)).
-
     !$acc parallel private(JSP,JLEV) default(none)
     !$acc loop collapse(2)	
     DO JSP=KSTA,KEND
@@ -368,16 +391,13 @@ ELSE
       ENDDO
     ENDDO
     !$acc end parallel
+
   ENDIF
 ENDIF
 
 !           Vertical eigenmodes space --> current space.
 
 IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Calls SGEMMX in parallel region
-!!!$acc update host(SIMO,zspdivp,pspdivg)
-!!!CALL MXMAOP(SIMO,1,NFLEVG,ZSPDIVP(:,KSTA:KEND),1,NFLEVG,PSPDIVG(:,KSTA:KEND),1,&
-!!! & NFLEVG,NFLEVG,NFLEVG,ISPCOL)  
-!!!$acc update device(SIMO,zspdivp,pspdivg)
 
 #if defined(_OPENACC)
 !$acc host_data use_device(SIMO,ZSPDIVP,PSPDIVG)
@@ -425,15 +445,23 @@ ELSE
   !       ZSPDIV=(DIVprim(t+dt)) --> ZSPDIVG=(GMBAR**2 * DIVprim(t+dt)) .
 
   IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV) default(none)
 !$acc loop gang
+#else
+!$OMP PARALLEL DO PRIVATE(JSP,JLEV)
+#endif
   DO JSP=KSTA,KEND
   !$acc loop vector
     DO JLEV=1,NFLEVG
       ZHELP(JLEV,JSP)=PSPDIVG(JLEV,JSP)*RSTRET*RSTRET
     ENDDO
   ENDDO
+#if defined(_OPENACC)
 !$acc END PARALLEL
+#else
+!$OMP END PARALLEL DO
+#endif
   IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
 
 ENDIF
@@ -452,8 +480,12 @@ IF( .NOT.LDONEM ) CALL GSTATS(1657,1)
 !*       2.5  Increment Temperature and surface pressure
 
 IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV) default(none)
 !$acc loop gang
+#else
+!$OMP PARALLEL DO PRIVATE(JSP,JLEV)
+#endif
 DO JSP=KSTA,KEND
 !$acc loop vector
   DO JLEV=1,NFLEVG
@@ -461,12 +493,19 @@ DO JSP=KSTA,KEND
   ENDDO
   PSPSPG(JSP)=PSPSPG(JSP)-ZBDT*ZSP(JSP)
 ENDDO
+#if defined(_OPENACC)
 !$acc END PARALLEL
+#else
+!$OMP END PARALLEL DO
+#endif
 IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
 
+#if defined(_OPENACC)
 if (limpf) then 
 !$acc exit data copyout(pspauxg)
 end if
+#endif
+
 !$acc end data !!!copyout(zsdiv,zhelp,zst,zsp)
 !$acc end data !!!copy(pspdivg,psptg,pspspg,zspdivp,zsdivp)
 !$acc end data !!present

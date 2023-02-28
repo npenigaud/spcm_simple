@@ -113,9 +113,14 @@ IF (YDCVER%LVERTFE) THEN
 !$acc data present(pt,psp,pd)
 !$acc data present(ydveta%vfe_rdetah,silnpr,sialph,sirprg,ydveta,ydcst)
 !$acc data create(zsphi,zout)
+
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) default(none)
-!!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
+#else
+!$OMP PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH)
+!$OMP DO SCHEDULE(STATIC)
+#endif
   DO JLEV=1,KLEV
     ZDETAH=YDVETA%VFE_RDETAH(JLEV)
     !$acc loop vector
@@ -123,13 +128,15 @@ IF (YDCVER%LVERTFE) THEN
       ZSPHI(JSPEC,JLEV)=-YDCST%RD*PT(JLEV,JSPEC)*SILNPR(JLEV)*ZDETAH
     ENDDO
   ENDDO
-!!!!!$OMP END DO
+#if defined(_OPENACC)
 !$acc END PARALLEL
+#else
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
 
-  !!initial 2 lignes
-  !!ZSPHI(:,0)=0.0_JPRB
-  !!ZSPHI(:,KLEV+1)=0.0_JPRB
-  !!modif 7 lignes
+!!!!a verifier
+#if defined(_OPENACC)
 !$acc parallel private(jspec) default(none)
 !$acc loop gang
 do jspec=1,kspec
@@ -137,37 +144,51 @@ do jspec=1,kspec
   ZSPHI(jspec,KLEV+1)=0.0_JPRB
 enddo
 !$acc end parallel
+#else
+  ZSPHI(:,0)=0.0_JPRB
+  ZSPHI(:,KLEV+1)=0.0_JPRB
+#endif
+
+
   CALL VERDISINT(YDVFE,YDCVER,CLOPER,'11',KSPEC,1,KSPEC,KLEV,ZSPHI,ZOUT,KCHUNK=YDGEOMETRY%YRDIM%NPROMA)
 
-print *,"apres verdisint"
 
+#if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC) default(none)
-!!!!!$OMP DO SCHEDULE(STATIC) 
 !$acc loop gang
+#else
+!$OMP PARALLEL PRIVATE(JLEV,JSPEC)
+!$OMP DO SCHEDULE(STATIC)
+#endif
   DO JLEV=1,KLEV
   !$acc loop vector
     DO JSPEC=1,KSPEC
       PD(JLEV,JSPEC)=ZOUT(JSPEC,JLEV-1)+PSP(JSPEC)*SIRPRG
     ENDDO
   ENDDO
-!!!!!$OMP END DO
+#if defined(_OPENACC)
 !$acc END PARALLEL
+#else
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
 !$acc end data
 !$acc end data
 !$acc end data
 ELSE
   ZSPHIX(KLEV, :)=0.0_JPRB
 
-!$acc PARALLEL PRIVATE(JSPEC,JLEV) present(pt,psp,pd)
-!!!!!$OMP DO SCHEDULE(STATIC)
+!$OMP PARALLEL PRIVATE(JLEV,JSPEC)
+!$OMP DO SCHEDULE(STATIC)
   DO JSPEC=1,KSPEC,1
     DO JLEV=KLEV,1,-1
       ZSPHIX(JLEV-1, JSPEC)=ZSPHIX(JLEV, JSPEC)+YDCST%RD*PT(JLEV,JSPEC)*SILNPR(JLEV)
       PD(JLEV,JSPEC)=ZSPHIX(JLEV, JSPEC)+SIALPH(JLEV)*YDCST%RD*PT(JLEV,JSPEC)+PSP(JSPEC)*SIRPRG
     ENDDO
   ENDDO
-!!!!!$OMP END DO
-!$acc END PARALLEL
+!$OMP END DO
+!$OMP END PARALLEL
 
 ENDIF
 
