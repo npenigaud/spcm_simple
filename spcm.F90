@@ -59,14 +59,14 @@ INTEGER :: IPRINTLEV
 CHARACTER (LEN=64) :: CLFILE, CLPROC, CLCASE
 LOGICAL :: LLVERBOSE, LLWRITEGRIB1, LLWRITETEXT1, LLWRITEGRIB2, LLWRITETEXT2, LLSTATGP, LLSTATSP
 
-real::debut,fin
-
+integer(kind=8)::nb_periodes_initial1,nb_periodes_initial2
+integer(kind=8)::nb_periodes_final1,nb_periodes_final2
+integer(kind=8)::nb_periodes_max,nb_periodes_sec,nb_periodes
+real(kind=8)::temps_passe
 integer::repetition
 
 REAL(KIND=JPHOOK) ::  ZHOOK_HANDLE
 
-
-call cpu_time(debut)
 
 CALL INITOPTIONS
 CALL GETOPTION ("--verbose", LLVERBOSE)
@@ -173,13 +173,23 @@ CALL WIPE(YDMODEL)
 #endif
 
 IF (LHOOK) CALL DR_HOOK('SPCM',0,ZHOOK_HANDLE)
+call system_clock(COUNT_RATE=nb_periodes_sec,COUNT_MAX=nb_periodes_max)
+call system_clock(COUNT=nb_periodes_initial1)
 
 #if defined(_OPENACC)
 CALL COPY(YDMODEL)
 CALL COPY(YDGEOMETRY)
 #endif
 
+call system_clock(COUNT=nb_periodes_initial2)
+
 CALL SPCM_SIMPLE (YDGEOMETRY,YDMODEL,PSPSP,PSPVOR,PSPDIV,PSPT,PSPSPD,PSPSVD)
+
+call system_clock(COUNT=nb_periodes_final2)
+nb_periodes=nb_periodes_final2-nb_periodes_initial2
+if (nb_periodes_final2<nb_periodes_initial2) nb_periodes=nb_periodes+nb_periodes_max
+temps_passe=REAL(nb_periodes)/nb_periodes_sec
+print *, "sans transferts, duree (s) : ",temps_passe
 
 !#if defined(__PGI)
 !!$acc end data
@@ -189,6 +199,12 @@ CALL SPCM_SIMPLE (YDGEOMETRY,YDMODEL,PSPSP,PSPVOR,PSPDIV,PSPT,PSPSPD,PSPSVD)
 CALL WIPE(YDGEOMETRY)
 CALL WIPE(YDMODEL)
 #endif
+
+call system_clock(COUNT=nb_periodes_final1)
+nb_periodes=nb_periodes_final1-nb_periodes_initial1
+if (nb_periodes_final1<nb_periodes_initial1) nb_periodes=nb_periodes+nb_periodes_max
+temps_passe=REAL(nb_periodes)/nb_periodes_sec
+print *, "avec 1 transfert aller-retour, duree (s) : ",temps_passe
 
 IF (LHOOK) CALL DR_HOOK('SPCM',1,ZHOOK_HANDLE)
 
@@ -260,9 +276,6 @@ CALL FLUSH (6)
 CALL MPL_BARRIER ()
 
 CALL MPL_END ()
-
-call cpu_time(fin)
-print *, "duree (s) : ",fin-debut
 
 !!IF (LHOOK) CALL DR_HOOK('SPCM',1,ZHOOK_HANDLE)
 
@@ -355,7 +368,7 @@ ENDIF
 IF (MYPROC == 1) THEN
   WRITE (*, '(A16," ",A6," ",3A30)') "NAME", "JLEV", "MAX", "MIN", "RMS"
   DO JLEV = 1, YDGEOMETRY%YRDIMV%NFLEVG
-    WRITE (*, '(A16," ",I6," ",3E30.20)') CDNAME, JLEV, MAXVAL (ZGPG1-ZGPG2), MINVAL (ZGPG1-ZGPG2), SQRT (SUM ((ZGPG1-ZGPG2) * (ZGPG1-ZGPG2)))
+    WRITE (*, '(A16," ",I6," ",3E30.20)') CDNAME, JLEV, MAXVAL (ZGPG1(:,JLEV)-ZGPG2(:,JLEV)), MINVAL (ZGPG1(:,JLEV)-ZGPG2(:,JLEV)), SQRT (SUM ((ZGPG1(:,JLEV)-ZGPG2(:,JLEV)) * (ZGPG1(:,JLEV)-ZGPG2(:,JLEV))))
   ENDDO
 ENDIF
 
