@@ -1,0 +1,48 @@
+Profiling information for program='/home/gmap/mrpm/penigaudn/spcm_simple_kernel/nvhpc_gpu/./spcm.x', proc#1:
+	No. of instrumented routines called : 35
+	Instrumentation started : 20230302 151829
+	Instrumentation   ended : 20230302 152632
+	Instrumentation overhead: 0.00%
+	Memory usage : 28439 MB (heap), 11154 MB (rss), 0 MB (stack), 34604 MB (vmpeak), 0 (paging)
+	Wall-time is 241.49 sec on proc#1 (1 procs, 1 threads)
+	Thread#1:      241.49 sec (100.00%) -- Cycles: 543368347537 (1087192885747)
+
+    #  % Time         Cumul         Self        Total     # of calls        Self       Total    Routine@<thread-id>
+                                                                             (Size; Size/sec; Size/call; MinSize; MaxSize)
+        (self)        (sec)        (sec)        (sec)                    ms/call     ms/call
+
+    1    77.41      186.930      186.930      231.188              1   186930.19   231188.32    SPCM@1
+    2     7.97      206.185       19.255       19.255             20      962.76      962.77    TRMTOS@1
+    3     7.60      224.550       18.365       18.365             20      918.23      918.23    TRSTOM@1
+    4     1.76      228.807        4.257        4.257             20      212.84      212.84    SPCSI_transferts2@1
+    5     0.83      230.820        2.013       44.258             20      100.64     2212.91    SPCM_SIMPLE@1
+    6     0.76      232.648        1.829        1.829             10      182.87      182.87    TRLTOG@1
+    7     0.61      234.112        1.463        1.465           5000        0.29        0.29    LEINV_DGEMM_1@1
+    8     0.60      235.556        1.444        1.446           5000        0.29        0.29    LEINV_DGEMM_2@1
+    9     0.56      236.914        1.358        8.522             10      135.78      852.15    INV_TRANS@1
+   10     0.49      238.093        1.180        1.181           5000        0.24        0.24    FFT992@1
+   11     0.41      239.082        0.988        3.901           5000        0.20        0.78    LTINV_MOD@1
+   12     0.39      240.028        0.946        0.946             10       94.62       94.62    GATH_GRID@1
+   13     0.35      240.868        0.840        0.840              1      839.95      839.96    SETUP_TRANS@1
+   14     0.10      241.121        0.253        0.253             10       25.30       25.30    TRMTOL@1
+   15     0.03      241.194        0.073        0.073             20        3.64        3.64    SITNU_transpose2@1
+   16     0.02      241.253        0.060        0.060             20        2.98        2.98    SIGAM_transpose2@1
+   17     0.02      241.302        0.049        4.625             20        2.43      231.26    SPCSI@1
+   18     0.01      241.335        0.033        0.035             40        0.83        0.87    VERINT@1
+   19     0.01      241.366        0.031        0.031             20        1.55        1.55    SPCSI_boucle2@1
+   20     0.01      241.397        0.031        0.031             20        1.54        1.54    SPCSI_boucle3@1
+   21     0.01      241.426        0.029        0.029             20        1.46        1.46    SIGAM_transpose1@1
+   22     0.01      241.445        0.019        0.019             20        0.93        0.93    SITNU_transpose1@1
+   23     0.01      241.462        0.018        0.018             20        0.88        0.88    SPCSI_boucle1@1
+   24     0.01      241.478        0.015        0.015             20        0.76        0.76    SPCSI_boucle4@1
+   25     0.00      241.482        0.004        0.004             20        0.19        0.19    SPCSI_transferts1@1
+   26     0.00      241.484        0.002        0.125             20        0.11        6.26    SIGAM_SP_OPENMP@1
+   27     0.00      241.486        0.002        0.095             20        0.08        4.75    SITNU_SP_OPENMP@1
+   28     0.00      241.487        0.001        0.001             40        0.03        0.03    VERINT_DGEMM_2@1
+   29     0.00      241.487        0.001        0.001             20        0.03        0.03    SPCSI_mxmaop1@1
+   30     0.00      241.488        0.000        0.000             20        0.02        0.02    SIGAM_cond_lim@1
+   31     0.00      241.488        0.000        0.000             20        0.02        0.02    SITNU_calcul1@1
+   32     0.00      241.489        0.000        0.000             20        0.02        0.02    SPCSI_mxmaop2@1
+   33     0.00      241.489        0.000        0.000             20        0.02        0.02    SITNU_cond_lim@1
+   34     0.00      241.489        0.000        0.035             40        0.00        0.87    VERDISINT@1
+   35     0.00      241.489        0.000        0.000             10        0.00        0.00    TRLTOG_BAR@1

@@ -63,7 +63,8 @@ integer(kind=8)::nb_periodes_initial1,nb_periodes_initial2
 integer(kind=8)::nb_periodes_final1,nb_periodes_final2
 integer(kind=8)::nb_periodes_max,nb_periodes_sec,nb_periodes
 real(kind=8)::temps_passe
-integer::repetition
+integer::repetition,repetition2
+#define repetitif=1
 
 REAL(KIND=JPHOOK) ::  ZHOOK_HANDLE
 
@@ -153,7 +154,7 @@ associate(simi=>YDMODEL%YRML_DYN%YRDYN%SIMI,NFLEVG=>YDGEOMETRY%YRDIMV%NFLEVG)
 !!$acc data copy(pspdiv,pspt,pspsp)
 !#endif
 
-do repetition=1,5
+do repetition=1,3
 
 !!CALL SPCM_SIMPLE (YDGEOMETRY,YDMODEL,PSPSP2,PSPVOR2,PSPDIV2,PSPT2,PSPSPD2,PSPSVD2)
 
@@ -170,6 +171,14 @@ end associate
 
 CALL WIPE(YDGEOMETRY)
 CALL WIPE(YDMODEL)
+
+PSPSP2(:)=PSPSP(:)
+PSPVOR2(:,:)=PSPVOR(:,:)
+PSPDIV2(:,:)=PSPDIV(:,:)
+PSPT2(:,:)=PSPT(:,:)
+PSPSPD2(:,:)=PSPSPD(:,:)
+PSPSVD2(:,:)=PSPSVD(:,:)
+
 #endif
 
 IF (LHOOK) CALL DR_HOOK('SPCM',0,ZHOOK_HANDLE)
@@ -182,9 +191,22 @@ CALL COPY(YDGEOMETRY)
 #endif
 
 call system_clock(COUNT=nb_periodes_initial2)
+#if defined repetitif
+do repetition2=1,20
+
+PSPSP(:)=PSPSP2(:)
+PSPVOR(:,:)=PSPVOR2(:,:)
+PSPDIV(:,:)=PSPDIV2(:,:)
+PSPT(:,:)=PSPT2(:,:)
+PSPSPD(:,:)=PSPSPD2(:,:)
+PSPSVD(:,:)=PSPSVD2(:,:)
+#endif
 
 CALL SPCM_SIMPLE (YDGEOMETRY,YDMODEL,PSPSP,PSPVOR,PSPDIV,PSPT,PSPSPD,PSPSVD)
 
+#if defined repetitif
+end do
+#endif
 call system_clock(COUNT=nb_periodes_final2)
 nb_periodes=nb_periodes_final2-nb_periodes_initial2
 if (nb_periodes_final2<nb_periodes_initial2) nb_periodes=nb_periodes+nb_periodes_max
