@@ -112,9 +112,12 @@ CLOPER='IBOT'
 IF (YDCVER%LVERTFE) THEN
 
   IF (YDCVER%LVFE_COMPATIBLE) CLOPER='INTG'
-!$acc data present(pt,psp,pd)
+!$acc data present(pt,psp,pd,klev,kspec)
+!!$acc data present(pt,psp,pd)
 !$acc data present(ydveta%vfe_rdetah,silnpr,sialph,sirprg,ydveta,ydcst)
+!!$acc data create(zsphi,zout,intermediaire) 
 !$acc data create(zsphi,zout)
+!!copy(kspec,klev)
 
 IF (LHOOK) CALL DR_HOOK('SIGAM_transpose1',0,ZHOOK_HANDLE2)
 
@@ -165,7 +168,7 @@ IF (LHOOK) CALL DR_HOOK('SIGAM_cond_lim',1,ZHOOK_HANDLE2)
 
 IF (LHOOK) CALL DR_HOOK('SIGAM_transpose2',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
-!$acc PARALLEL PRIVATE(JLEV,JSPEC) default(none)
+!$acc PARALLEL PRIVATE(JLEV,JSPEC,intermediaire) default(none)
 !$acc loop gang
 #else
 !$OMP PARALLEL PRIVATE(JLEV,JSPEC,intermediaire)

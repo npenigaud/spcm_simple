@@ -3,7 +3,7 @@ SRC=..
 
 # PGI
 
-FIAT=/home/gmap/mrpm/marguina/hub/install
+FIAT=/home/gmap/mrpm/marguina/fiat/pginvtx-install
 ECTRANS=/home/gmap/mrpm/marguina/hub/install
 ECCODES=/home/gmap/mrpm/marguina/install/PGI2211/eccodes-2.14.0
 

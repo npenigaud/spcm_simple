@@ -191,10 +191,19 @@ ZBDT2=(ZBDT*RSTRET)**2
 !*        2.3  Computes right-hand side of Helmholtz equation.
 #if defined(_OPENACC)
 IF (LHOOK) CALL DR_HOOK('SPCSI_transferts1',0,ZHOOK_HANDLE2)
-!$acc data present(YDLAP,nflevg,nsmax,sivp,rstret) 
+!!!$acc data present(YDLAP,nflevg,nsmax,sivp,rstret) 
+!!$acc data copy(pspdivg,psptg,pspspg,pspauxg,zsdivpl,zspdivpl)
+!!$acc data present(pspdivg,psptg,pspspg) copy(ispcol,zbdt,zbdt2)
+!!copyin(ispcol,zbdt,zbdt2) 
+!!create(zhelp,zsp,zst)
+!!$acc data copyout(zsdiv,zsdivp,zspdivp,zhelp,zsp,zst)
+
+!$acc data present(YDLAP,nflevg,nsmax,sivp,rstret) copy(ispcol,zbdt,zbdt2)
+!!$acc data present(YDLAP,nflevg,nsmax,sivp,rstret)
 !!$acc data copy(pspdivg,psptg,pspspg,pspauxg,zsdivpl,zspdivpl)
 !$acc data present(pspdivg,psptg,pspspg)
-!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
+!!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
+!$acc data create(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
 
 !!faux cas test
 if (limpf) then 
@@ -203,13 +212,13 @@ end if
 IF (LHOOK) CALL DR_HOOK('SPCSI_transferts1',1,ZHOOK_HANDLE2)
 #endif
 
-IF( .NOT.LDONEM ) CALL GSTATS(1655,0) ! Main routines and loops in SIGAM chain are parallel
+!!IF( .NOT.LDONEM ) CALL GSTATS(1655,0) ! Main routines and loops in SIGAM chain are parallel
 
 CALL SIGAM_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZSDIV,PSPTG(:,KSTA:KEND),PSPSPG(KSTA:KEND))
 
-IF( .NOT.LDONEM ) CALL GSTATS(1655,1)
+!!IF( .NOT.LDONEM ) CALL GSTATS(1655,1)
 
-IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
+!!IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
 
 !!faux cas test
 IF (LSIDG) THEN
@@ -300,13 +309,13 @@ IF (LIMPF) THEN
 !$OMP END PARALLEL DO
 #endif
 ENDIF
-IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
+!!IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
 
 !*        2.4  Solve Helmholtz equation
 
 !           Current space --> vertical eigenmodes space.
 
-IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Call to SGEMMX Parallelised
+!!IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Call to SGEMMX Parallelised
 
 !!$acc update host(zsdiv,zsdivp)
 !!CALL MXMAOP(SIMI,1,NFLEVG,ZSDIV,1,NFLEVG,ZSDIVP(:,KSTA:KEND),1,NFLEVG,&
@@ -325,7 +334,7 @@ CALL MXMAOP(SIMI,1,NFLEVG,ZSDIV,1,NFLEVG,ZSDIVP(:,KSTA:KEND),1,NFLEVG,&
 #endif
 IF (LHOOK) CALL DR_HOOK('SPCSI_mxmaop1',1,ZHOOK_HANDLE2)
 
-IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
+!!IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
 
 !!faux cas test
 IF (LSIDG) THEN
@@ -401,7 +410,7 @@ ENDIF
 
 !           Vertical eigenmodes space --> current space.
 
-IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Calls SGEMMX in parallel region
+!!IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Calls SGEMMX in parallel region
 
 IF (LHOOK) CALL DR_HOOK('SPCSI_mxmaop2',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
@@ -415,7 +424,7 @@ CALL MXMAOP(SIMO,1,NFLEVG,ZSPDIVP(:,KSTA:KEND),1,NFLEVG,PSPDIVG(:,KSTA:KEND),1,&
 #endif
 IF (LHOOK) CALL DR_HOOK('SPCSI_mxmaop2',1,ZHOOK_HANDLE2)
 
-IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
+!!IF( .NOT.LDONEM ) CALL GSTATS(1660,1)
 
 !!non parcourue dans le cas test
 IF (LSIDG) THEN
@@ -450,7 +459,7 @@ ELSE
 IF (LHOOK) CALL DR_HOOK('SPCSI_boucle3',0,ZHOOK_HANDLE2)
   !       ZSPDIV=(DIVprim(t+dt)) --> ZSPDIVG=(GMBAR**2 * DIVprim(t+dt)) .
 
-  IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
+!!  IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV) default(none)
 !$acc loop gang
@@ -469,7 +478,7 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_boucle3',0,ZHOOK_HANDLE2)
 !$OMP END PARALLEL DO
 #endif
 IF (LHOOK) CALL DR_HOOK('SPCSI_boucle3',1,ZHOOK_HANDLE2)
-  IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
+!!  IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
 
 ENDIF
 
@@ -480,13 +489,13 @@ ENDIF
 !         (GMBAR**2 * DIVprim(t+dt)) --> [ tau * (GMBAR**2 * DIVprim(t+dt)) ]
 !                                    and [  nu * (GMBAR**2 * DIVprim(t+dt)) ]
 
-IF( .NOT.LDONEM ) CALL GSTATS(1657,0)  ! Main routines and loops in SITNU chain are parallel
+!!IF( .NOT.LDONEM ) CALL GSTATS(1657,0)  ! Main routines and loops in SITNU chain are parallel
 CALL SITNU_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZHELP,ZST,ZSP)
-IF( .NOT.LDONEM ) CALL GSTATS(1657,1)
+!!IF( .NOT.LDONEM ) CALL GSTATS(1657,1)
 
 !*       2.5  Increment Temperature and surface pressure
 
-IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
+!!IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
 IF (LHOOK) CALL DR_HOOK('SPCSI_boucle4',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV) default(none)
@@ -507,7 +516,7 @@ ENDDO
 !$OMP END PARALLEL DO
 #endif
 IF (LHOOK) CALL DR_HOOK('SPCSI_boucle4',1,ZHOOK_HANDLE2)
-IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
+!!IF( .NOT.LDONEM ) CALL GSTATS(1656,1)
 
 #if defined(_OPENACC)
 IF (LHOOK) CALL DR_HOOK('SPCSI_transferts2',0,ZHOOK_HANDLE2)

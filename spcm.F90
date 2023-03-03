@@ -66,7 +66,7 @@ real(kind=8)::temps_passe
 integer::repetition,repetition2
 #define repetitif=1
 
-REAL(KIND=JPHOOK) ::  ZHOOK_HANDLE
+REAL(KIND=JPHOOK) ::  ZHOOK_HANDLE,zhook_handle2
 
 
 CALL INITOPTIONS
@@ -186,20 +186,23 @@ call system_clock(COUNT_RATE=nb_periodes_sec,COUNT_MAX=nb_periodes_max)
 call system_clock(COUNT=nb_periodes_initial1)
 
 #if defined(_OPENACC)
+IF (LHOOK) CALL DR_HOOK('SPCM_transfert1',0,ZHOOK_HANDLE2)
 CALL COPY(YDMODEL)
 CALL COPY(YDGEOMETRY)
+IF (LHOOK) CALL DR_HOOK('SPCM_transfert1',1,ZHOOK_HANDLE2)
 #endif
 
 call system_clock(COUNT=nb_periodes_initial2)
 #if defined repetitif
 do repetition2=1,20
-
+IF (LHOOK) CALL DR_HOOK('SPCM_repetitif',0,ZHOOK_HANDLE2)
 PSPSP(:)=PSPSP2(:)
 PSPVOR(:,:)=PSPVOR2(:,:)
 PSPDIV(:,:)=PSPDIV2(:,:)
 PSPT(:,:)=PSPT2(:,:)
 PSPSPD(:,:)=PSPSPD2(:,:)
 PSPSVD(:,:)=PSPSVD2(:,:)
+IF (LHOOK) CALL DR_HOOK('SPCM_repetitif',1,ZHOOK_HANDLE2)
 #endif
 
 CALL SPCM_SIMPLE (YDGEOMETRY,YDMODEL,PSPSP,PSPVOR,PSPDIV,PSPT,PSPSPD,PSPSVD)
@@ -218,8 +221,10 @@ print *, "sans transferts, duree (s) : ",temps_passe
 !#endif
 
 #if defined(_OPENACC)
+IF (LHOOK) CALL DR_HOOK('SPCM_transfert2',0,ZHOOK_HANDLE2)
 CALL WIPE(YDGEOMETRY)
 CALL WIPE(YDMODEL)
+IF (LHOOK) CALL DR_HOOK('SPCM_transfert2',1,ZHOOK_HANDLE2)
 #endif
 
 call system_clock(COUNT=nb_periodes_final1)
