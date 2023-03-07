@@ -1,3 +1,14 @@
+#if defined(_OPENACC)
+SUBROUTINE SPCSI(&
+ ! --- INPUT -----------------------------------------------------------------
+ & YDGEOMETRY,YDCST,YDLDDH,YDRIP,YDDYN,KM,KMLOC,KSTA,KEND,LDONEM,&
+ ! --- INOUT -----------------------------------------------------------------
+ & PSPVORG,PSPDIVG,PSPTG,PSPSPG,&
+ & PSPTNDSI_VORG,PSPTNDSI_DIVG,PSPTNDSI_TG,&
+ & zsdiv,zhelp,zsp,zst,zsdivp,zspdivp,zsphi,zout,&
+ ! --- INPUT OPTIONAL --------------------------------------------------------
+ & PSPAUXG)
+#else
 SUBROUTINE SPCSI(&
  ! --- INPUT -----------------------------------------------------------------
  & YDGEOMETRY,YDCST,YDLDDH,YDRIP,YDDYN,KM,KMLOC,KSTA,KEND,LDONEM,&
@@ -6,6 +17,7 @@ SUBROUTINE SPCSI(&
  & PSPTNDSI_VORG,PSPTNDSI_DIVG,PSPTNDSI_TG,&
  ! --- INPUT OPTIONAL --------------------------------------------------------
  & PSPAUXG)
+#endif
 
 !**** *SPCSI* - SPECTRAL SPACE SEMI-IMPLICIT COMPUTATIONS FOR HYD MODEL.
 
@@ -97,8 +109,19 @@ REAL(KIND=JPRB)   ,INTENT(INOUT) :: PSPSPG(:)
 REAL(KIND=JPRB)   ,INTENT(INOUT) :: PSPTNDSI_VORG(:,:)
 REAL(KIND=JPRB)   ,INTENT(INOUT) :: PSPTNDSI_DIVG(:,:)
 REAL(KIND=JPRB)   ,INTENT(INOUT) :: PSPTNDSI_TG(:,:)
-REAL(KIND=JPRB)   ,INTENT(IN), OPTIONAL :: PSPAUXG(:,:) 
-
+ 
+#if defined(_OPENACC)
+REAL(KIND=JPRB)   ,INTENT(INOUT) ::zsdiv(:,:)
+REAL(KIND=JPRB)   ,INTENT(INOUT) ::zhelp(:,:)
+REAL(KIND=JPRB)   ,INTENT(INOUT) ::zst(:,:)
+REAL(KIND=JPRB)   ,INTENT(INOUT) ::zsp(:)
+REAL(KIND=JPRB)   ,INTENT(INOUT) ::zsdivp(:,:)
+REAL(KIND=JPRB)   ,INTENT(INOUT) ::zspdivp(:,:)
+REAL(KIND=JPRB)   ,INTENT(INOUT) ::zsphi(:,:)
+REAL(KIND=JPRB)   ,INTENT(INOUT) ::zout(:,:)
+REAL(KIND=JPRB)   ,INTENT(IN), OPTIONAL :: PSPAUXG(:,:)
+#else
+REAL(KIND=JPRB)   ,INTENT(IN), OPTIONAL :: PSPAUXG(:,:)
 !     ------------------------------------------------------------------
 
 REAL(KIND=JPRB), ALLOCATABLE :: ZSDIVP (:,:)
@@ -108,14 +131,15 @@ REAL(KIND=JPRB) :: ZSDIV  (YDGEOMETRY%YRDIMV%NFLEVG,KSTA:KEND)
 REAL(KIND=JPRB) :: ZHELP  (YDGEOMETRY%YRDIMV%NFLEVG,KSTA:KEND)
 REAL(KIND=JPRB) :: ZST    (YDGEOMETRY%YRDIMV%NFLEVG,KSTA:KEND) 
 REAL(KIND=JPRB) :: ZSP    (       KSTA:KEND)                   
+#endif
 
 REAL(KIND=JPRB) :: ZSDIVPL (YDGEOMETRY%YRDIMV%NFLEVG,KM:YDGEOMETRY%YRDIM%NSMAX,2)
 REAL(KIND=JPRB) :: ZSPDIVPL(YDGEOMETRY%YRDIMV%NFLEVG,KM:YDGEOMETRY%YRDIM%NSMAX,2)
 
-#if defined(_OPENACC)
-real(kind=jprb)::zsphi(kend-ksta+1,0:YDGEOMETRY%YRDIMV%NFLEVG+1)
-real(kind=jprb)::zout(kend-ksta+1,0:YDGEOMETRY%YRDIMV%NFLEVG)
-#endif
+!!!!#if defined(_OPENACC)
+!!!!real(kind=jprb)::zsphi(kend-ksta+1,0:YDGEOMETRY%YRDIMV%NFLEVG+1)
+!!!!real(kind=jprb)::zout(kend-ksta+1,0:YDGEOMETRY%YRDIMV%NFLEVG)
+!!!!#endif
 
 INTEGER(KIND=JPIM) :: II, IN, IOFF, IS0, IS02, ISE, ISPCOL, JLEV, JN, JSP  
 
@@ -177,8 +201,12 @@ ENDIF
 !*       2.    SEMI-IMPLICIT SPECTRAL COMPUTATIONS.
 !              ------------------------------------
 
+#if defined(_OPENACC)
+
+#else
 ALLOCATE(ZSDIVP(NFLEVG,MAX(NSPEC2V,NSPEC2VF)))
 ALLOCATE(ZSPDIVP(NFLEVG,MAX(NSPEC2V,NSPEC2VF)))
+#endif
 
 
 !*        2.1  Preliminary initialisations.
@@ -209,7 +237,7 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_transferts1',0,ZHOOK_HANDLE2)
 !$acc data present(pspdivg,psptg,pspspg)
 !!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
 !!!!!!!$acc data create(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
-!$acc data create(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp,zsphi,zout)
+!$acc data present(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp,zsphi,zout)
 
 !!faux cas test
 if (limpf) then 
@@ -336,6 +364,7 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_mxmaop1',0,ZHOOK_HANDLE2)
 !$acc host_data use_device(SIMI,ZSDIV,ZSDIVP)
 CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
   & SIMI,NFLEVG,ZSDIV,NFLEVG,0.0_JPRB,ZSDIVP(1,KSTA),NFLEVG)
+!$acc wait
 !$acc end host_data
 #else
 CALL MXMAOP(SIMI,1,NFLEVG,ZSDIV,1,NFLEVG,ZSDIVP(:,KSTA:KEND),1,NFLEVG,&
@@ -426,6 +455,7 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_mxmaop2',0,ZHOOK_HANDLE2)
 !$acc host_data use_device(SIMO,ZSPDIVP,PSPDIVG)
 CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
   & SIMO,NFLEVG,ZSPDIVP(1,KSTA),NFLEVG,0.0_JPRB,PSPDIVG(1,KSTA),NFLEVG)
+!$acc wait
 !$acc end host_data
 #else
 CALL MXMAOP(SIMO,1,NFLEVG,ZSPDIVP(:,KSTA:KEND),1,NFLEVG,PSPDIVG(:,KSTA:KEND),1,&
@@ -499,7 +529,11 @@ ENDIF
 !                                    and [  nu * (GMBAR**2 * DIVprim(t+dt)) ]
 
 !!IF( .NOT.LDONEM ) CALL GSTATS(1657,0)  ! Main routines and loops in SITNU chain are parallel
+#if defined(_OPENACC)
+CALL SITNU_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZHELP,ZST,ZSP,ZSPHI,ZOUT)
+#else
 CALL SITNU_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZHELP,ZST,ZSP)
+#endif
 !!IF( .NOT.LDONEM ) CALL GSTATS(1657,1)
 
 !*       2.5  Increment Temperature and surface pressure
@@ -539,8 +573,11 @@ end if
 IF (LHOOK) CALL DR_HOOK('SPCSI_transferts2',1,ZHOOK_HANDLE2)
 #endif
 
+#if defined(_OPENACC)
+#else
 DEALLOCATE(ZSDIVP)
 DEALLOCATE(ZSPDIVP)
+#endif
 
 !     ------------------------------------------------------------------
 
