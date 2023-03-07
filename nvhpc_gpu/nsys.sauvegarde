@@ -19,7 +19,7 @@ if $rank_should_profile; then
    fi
    echo "Louis debug NSYS rank $OMPI_COMM_WORLD_RANK"
    set -x
-   nsys profile -y 150 $timeout_params -s none --trace cuda,nvtx --kill=none --output="nsys.$SLURM_JOBID.$COMMENT$OMPI_COMM_WORLD_RANK.qdrep" $@
+   nsys profile $timeout_params --trace cuda,nvtx --kill=none --output="nsys.$SLURM_JOBID.$COMMENT$OMPI_COMM_WORLD_RANK.qdrep" $@
 else
    $@
 fi

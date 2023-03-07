@@ -107,11 +107,13 @@ ASSOCIATE(SIALPH=>YDDYN%SIALPH, SIDELP=>YDDYN%SIDELP, SILNPR=>YDDYN%SILNPR, SIRD
 !              ----------------------------------------
 
 IF(YDCVER%LVERTFE) THEN
+IF (LHOOK) CALL DR_HOOK('SITNU_transfert1',0,ZHOOK_HANDLE2)
 !$acc data present(pd,psp,pt,sidelp,sitlaf,sitr,ydveta,ydcst,sirprn,klev,kspec)
 !!$acc data present(pd,psp,pt,sidelp,sitlaf,sitr,ydveta,ydcst,sirprn)
 !!$acc data create(zsdiv,zout,intermediaire) 
 !$acc data create(zsdiv,zout)
 !!copy(kspec)
+IF (LHOOK) CALL DR_HOOK('SITNU_transfert1',1,ZHOOK_HANDLE2)
 
 IF (LHOOK) CALL DR_HOOK('SITNU_transpose1',0,ZHOOK_HANDLE2)
 
@@ -173,10 +175,8 @@ IF (LHOOK) CALL DR_HOOK('SITNU_transpose2',0,ZHOOK_HANDLE2)
 #endif
   !DO JLEV=1,KLEV
   DO JSPEC=1,KSPEC
-#if defined(_OPENACC)
-    !$acc loop vector
-#endif
     !DO JSPEC=1,KSPEC
+    !$acc loop vector
     DO JLEV=1,KLEV
       ZREC=1.0_JPRB/SITLAF(JLEV)
       !PT(JLEV,JSPEC)=YDCST%RKAPPA*SITR*ZOUT(JSPEC,JLEV-1)*ZREC
@@ -200,8 +200,10 @@ IF (LHOOK) CALL DR_HOOK('SITNU_calcul1',0,ZHOOK_HANDLE2)
 !$acc end parallel
 IF (LHOOK) CALL DR_HOOK('SITNU_calcul1',1,ZHOOK_HANDLE2)
 
+IF (LHOOK) CALL DR_HOOK('SITNU_transfert2',0,ZHOOK_HANDLE2)
 !$acc end data
 !$acc end data
+IF (LHOOK) CALL DR_HOOK('SITNU_transfert2',1,ZHOOK_HANDLE2)
 ELSE
 
   ZSDIVX(0, :)=0.0_JPRB

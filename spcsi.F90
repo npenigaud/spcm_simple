@@ -112,6 +112,11 @@ REAL(KIND=JPRB) :: ZSP    (       KSTA:KEND)
 REAL(KIND=JPRB) :: ZSDIVPL (YDGEOMETRY%YRDIMV%NFLEVG,KM:YDGEOMETRY%YRDIM%NSMAX,2)
 REAL(KIND=JPRB) :: ZSPDIVPL(YDGEOMETRY%YRDIMV%NFLEVG,KM:YDGEOMETRY%YRDIM%NSMAX,2)
 
+#if defined(_OPENACC)
+real(kind=jprb)::zsphi(kend-ksta+1,0:YDGEOMETRY%YRDIMV%NFLEVG+1)
+real(kind=jprb)::zout(kend-ksta+1,0:YDGEOMETRY%YRDIMV%NFLEVG)
+#endif
+
 INTEGER(KIND=JPIM) :: II, IN, IOFF, IS0, IS02, ISE, ISPCOL, JLEV, JN, JSP  
 
 REAL(KIND=JPRB) :: ZBDT, ZBDT2
@@ -203,7 +208,8 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_transferts1',0,ZHOOK_HANDLE2)
 !!$acc data copy(pspdivg,psptg,pspspg,pspauxg,zsdivpl,zspdivpl)
 !$acc data present(pspdivg,psptg,pspspg)
 !!$acc data copyout(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
-!$acc data create(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
+!!!!!!!$acc data create(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp)
+!$acc data create(zsdiv,zhelp,zsp,zst,zsdivp,zspdivp,zsphi,zout)
 
 !!faux cas test
 if (limpf) then 
@@ -213,8 +219,11 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_transferts1',1,ZHOOK_HANDLE2)
 #endif
 
 !!IF( .NOT.LDONEM ) CALL GSTATS(1655,0) ! Main routines and loops in SIGAM chain are parallel
-
+#if defined(_OPENACC)
+CALL SIGAM_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZSDIV,PSPTG(:,KSTA:KEND),PSPSPG(KSTA:KEND),ZSPHI,ZOUT)
+#else
 CALL SIGAM_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZSDIV,PSPTG(:,KSTA:KEND),PSPSPG(KSTA:KEND))
+#endif
 
 !!IF( .NOT.LDONEM ) CALL GSTATS(1655,1)
 

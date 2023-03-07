@@ -13,6 +13,8 @@ export DR_HOOK=1
 export DR_HOOK_OPT=prof
 export DR_NVTX=1
 
+
+
 ulimit -s unlimited
 export OMP_STACK_SIZE=4G
 

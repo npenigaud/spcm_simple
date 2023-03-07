@@ -15,6 +15,10 @@ export DR_HOOK_OPT=prof
 export DR_HOOK_IGNORE_SIGNALS=-1
 export DR_NVTX=1
 
+#blocking 
+#export CUDA_LAUNCH_BLOCKING=1
+#export NVCOMPILER_ACC_SYNCHRONOUS=1
+
 ulimit -s unlimited
 export OMP_STACK_SIZE=4G
 
