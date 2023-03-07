@@ -116,7 +116,8 @@ ASSOCIATE(SIALPH=>YDDYN%SIALPH, SIDELP=>YDDYN%SIDELP, SILNPR=>YDDYN%SILNPR, SIRD
 
 IF(YDGEOMETRY%YRCVER%LVERTFE) THEN
 IF (LHOOK) CALL DR_HOOK('SITNU_transfert1',0,ZHOOK_HANDLE2)
-!$acc data present(pd,psp,pt,sidelp,sitlaf,sitr,ydveta,ydcst,sirprn,klev,kspec)
+!!$acc data present(pd,psp,pt,sidelp,sitlaf,sitr,ydveta,ydcst,sirprn,klev,kspec)
+!$acc data present(pd,psp,pt,sidelp,sitlaf,sitr,ydveta,ydcst,sirprn,klev)
 !!$acc data present(pd,psp,pt,YDDYN%SIDELP,YDDYN%SITLAF,YDDYN%SITR,YDGEOMETRY%YRVETA,ydcst,SIRPRN=>YDDYN%SIRPRN)
 !!$acc data create(zsdiv,zout,intermediaire) 
 !$acc data present(zsdiv,zout)

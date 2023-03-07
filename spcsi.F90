@@ -231,7 +231,7 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_transferts1',0,ZHOOK_HANDLE2)
 !!create(zhelp,zsp,zst)
 !!$acc data copyout(zsdiv,zsdivp,zspdivp,zhelp,zsp,zst)
 
-!$acc data present(YDLAP,nflevg,nsmax,sivp,rstret) copy(ispcol,zbdt,zbdt2)
+!$acc data present(YDGEOMETRY%YRLAP,nflevg,nsmax,YDDYN%SIVP,rstret) !!copy(ispcol,zbdt,zbdt2)
 !!$acc data present(YDLAP,nflevg,nsmax,sivp,rstret)
 !!$acc data copy(pspdivg,psptg,pspspg,pspauxg,zsdivpl,zspdivpl)
 !$acc data present(pspdivg,psptg,pspspg)
@@ -269,8 +269,8 @@ IF (LSIDG) THEN
     DO JSP=KSTA,KEND
     !$acc loop vector
       DO JLEV=1,NFLEVG
-        IN=YDLAP%NVALUE(JSP+IOFF)
-        ZSDIV(JLEV,JSP)=YDLAP%RLAPIN(IN)*PSPDIVG(JLEV,JSP)-ZBDT*ZSDIV(JLEV,JSP)      
+        IN=YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)
+        ZSDIV(JLEV,JSP)=YDGEOMETRY%YRLAP%RLAPIN(IN)*PSPDIVG(JLEV,JSP)-ZBDT*ZSDIV(JLEV,JSP)      
       ENDDO
     ENDDO
 #if defined(_OPENACC)
@@ -288,8 +288,8 @@ IF (LSIDG) THEN
     DO JSP=KSTA,KEND
     !$acc loop vector
       DO JLEV=1,NFLEVG
-        IN=YDLAP%NVALUE(JSP+IOFF)
-        ZSDIV(JLEV,JSP)=PSPDIVG(JLEV,JSP)-ZBDT*YDLAP%RLAPDI(IN)*ZSDIV(JLEV,JSP)  
+        IN=YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)
+        ZSDIV(JLEV,JSP)=PSPDIVG(JLEV,JSP)-ZBDT*YDGEOMETRY%YRLAP%RLAPDI(IN)*ZSDIV(JLEV,JSP)  
       ENDDO
     ENDDO
 #if defined(_OPENACC)
@@ -311,8 +311,8 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_boucle1',0,ZHOOK_HANDLE2)
   DO JSP=KSTA,KEND
   !$acc loop vector
     DO JLEV=1,NFLEVG
-      IN=YDLAP%NVALUE(JSP+IOFF)
-      ZSDIV(JLEV,JSP)=PSPDIVG(JLEV,JSP)-ZBDT*YDLAP%RLAPDI(IN)*ZSDIV(JLEV,JSP)
+      IN=YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)
+      ZSDIV(JLEV,JSP)=PSPDIVG(JLEV,JSP)-ZBDT*YDGEOMETRY%YRLAP%RLAPDI(IN)*ZSDIV(JLEV,JSP)
     ENDDO
   ENDDO
 #if defined(_OPENACC)
@@ -382,7 +382,7 @@ IF (LSIDG) THEN
 
   !             Reorganisation of divergence
 
-  IS0=YDLAP%NSE0L(KMLOC)
+  IS0=YDGEOMETRY%YRLAP%NSE0L(KMLOC)
   IS02=0
   II=MIN(KM,1)+1
   
@@ -438,7 +438,7 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_boucle2',0,ZHOOK_HANDLE2)
     DO JSP=KSTA,KEND
       DO JLEV=1,NFLEVG
         ZSPDIVP(JLEV,JSP)=ZSDIVP(JLEV,JSP)&
-         & /(1.0_JPRB-ZBDT2*SIVP(JLEV)*YDLAP%RLAPDI(YDLAP%NVALUE(JSP+IOFF)))  
+         & /(1.0_JPRB-ZBDT2*YDDYN%SIVP(JLEV)*YDGEOMETRY%YRLAP%RLAPDI(YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)))  
       ENDDO
     ENDDO
     !$acc end parallel

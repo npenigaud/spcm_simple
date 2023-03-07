@@ -112,7 +112,8 @@ IF (LHOOK) CALL DR_HOOK('VERINT',0,ZHOOK_HANDLE)
 !!!!!!!!!!LPAR = OML_IN_PARALLEL()
 
 !!!!!!!$acc data present(zin,pin,zout,pout,pinte,kproma)
-!$acc data present(pin,pout,pinte,kproma)
+!!$acc data present(pin,pout,pinte,kproma)
+!$acc data present(pin,pout,pinte)
 
 !!non parcouru dans cas test
 !!!!!!!!!!IF (LPAR) THEN

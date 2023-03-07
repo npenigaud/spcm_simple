@@ -87,7 +87,7 @@ IF (LHOOK) CALL DR_HOOK('SPCM_SIMPLE_transfert1a',1,ZHOOK_HANDLE2)
 
 #if defined(_OPENACC)
 IF (LHOOK) CALL DR_HOOK('SPCM_SIMPLE_transfert1b',0,ZHOOK_HANDLE2)
-!$acc data copy(zsdiv,zhelp,zsp,zst) create(zsphi,zout,zsdivp,zspdivp)
+!$acc data create(zsdiv,zhelp,zsp,zst,zsphi,zout,zsdivp,zspdivp)
 IF (LHOOK) CALL DR_HOOK('SPCM_SIMPLE_transfert1b',1,ZHOOK_HANDLE2)
   CALL SPCSI(YDGEOMETRY, YDMODEL%YRCST, YDLDDH, YDMODEL%YRML_GCONF%YRRIP, YDDYN, IM, IMLOC, 1, &
   & NSPEC2V, .FALSE.,  ZSPVORG, ZSPDIVG, ZSPTG, ZSPSPG, ZSPTNDSI_VORG, ZSPTNDSI_DIVG, ZSPTNDSI_TG,zsdiv,zhelp,zsp,zst,zsdivp,zspdivp,zsphi,zout)

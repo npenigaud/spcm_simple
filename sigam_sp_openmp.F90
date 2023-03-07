@@ -120,7 +120,8 @@ CLOPER='IBOT'
 IF (YDCVER%LVERTFE) THEN
 
   IF (YDCVER%LVFE_COMPATIBLE) CLOPER='INTG'
-!$acc data present(pt,psp,pd,klev,kspec)
+!!$acc data present(pt,psp,pd,klev,kspec)
+!$acc data present(pt,psp,pd,klev)
 !!$acc data present(pt,psp,pd)
 !$acc data present(ydveta%vfe_rdetah,YDDYN%SILNPR,YDDYN%SIALPH,YDDYN%SIRPRG,ydveta,ydcst)
 !!$acc data create(zsphi,zout,intermediaire) 
