@@ -81,8 +81,13 @@ TYPE(TCVER)       ,INTENT(IN) :: YDCVER
 CHARACTER(LEN=*)  ,INTENT(IN) :: CDOPER, CDBC
 INTEGER(KIND=JPIM),INTENT(IN) :: KPROMA, KSTART, KPROF, KFLEV
 INTEGER(KIND=JPIM),OPTIONAL,INTENT(IN) :: KCHUNK
+#if defined(_OPENACC)
+REAL(KIND=JPRB)   ,INTENT(IN) :: PIN(0:KFLEV+1,kproma)
+REAL(KIND=JPRB)   ,INTENT(OUT):: POUT(KFLEV+1,kproma)
+#else
 REAL(KIND=JPRB)   ,INTENT(IN) :: PIN(KPROMA,0:KFLEV+1)
 REAL(KIND=JPRB)   ,INTENT(OUT):: POUT(KPROMA,KFLEV+1) 
+#endif
 
 !     ------------------------------------------------------------------
 
@@ -215,8 +220,21 @@ IF (ANY(CDOPER == (/'INGW','ITOP','IBOT','INTG'/))) THEN
   ELSE
     JCHUNK=1
   ENDIF
+#if defined(_OPENACC)
+!!!$acc data present(zoper,pin,pout)
+print *,"valeur de ind : ",ind
+print *,"valeur de iend : ",iend
+print *,"valeur de ilevin : ",ilevin
+print *,"valeur de ilevout : ",ilevout
+!!!!!!!!!!!!!!!!  CALL VERINT(KPROMA,KSTART,KPROF,ILEVIN,ILEVOUT,ZOPER,PIN(IND:IEND,:),&
+!!!!!!!!!!!!!!!!   & POUT,ITYPE,KCHUNK=JCHUNK)
+  CALL VERINT(KPROMA,KSTART,KPROF,ILEVIN,ILEVOUT,ZOPER,PIN,&
+   & POUT,ITYPE,KCHUNK=JCHUNK)
+!!!$acc end data
+#else
   CALL VERINT(KPROMA,KSTART,KPROF,ILEVIN,ILEVOUT,ZOPER,PIN(:,IND:IEND),&
    & POUT,ITYPE,KCHUNK=JCHUNK)
+#endif
 ELSEIF (ANY(CDOPER == (/'FDER','HDER','DEGW','DDER'/))) THEN
   CALL VERDER(KPROMA,KSTART,KPROF,ILEVIN,ILEVOUT,ZOPER,PIN(:,IND:IEND),POUT)
 ELSE 

@@ -81,8 +81,8 @@ REAL(KIND=JPRB)   ,INTENT(OUT)   :: PD(KLEV,KSPEC)
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PT(KLEV,KSPEC)
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PSP(KSPEC)
 #if defined(_OPENACC)
-REAL(KIND=JPRB),intent(inout) :: ZSPHI(KSPEC,0:KLEV+1)
-REAL(KIND=JPRB),intent(inout) :: ZOUT(KSPEC,0:KLEV)
+REAL(KIND=JPRB),intent(inout) :: ZSPHI(0:KLEV+1,kspec)
+REAL(KIND=JPRB),intent(inout) :: ZOUT(0:KLEV,kspec)
 #else
 
 !     ------------------------------------------------------------------
@@ -134,10 +134,21 @@ IF (LHOOK) CALL DR_HOOK('SIGAM_transpose1',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) default(none)
 !$acc loop gang
+  DO JSPEC=1,KSPEC
+  !$acc loop vector
+  DO JLEV=1,KLEV
+    !v1 ZDETAH=YDVETA%VFE_RDETAH(JLEV)
+    !v2 ZDETAH=-YDVETA%VFE_RDETAH(JLEV)*YDCST%RD
+    ZDETAH=-YDVETA%VFE_RDETAH(JLEV)*YDCST%RD*YDDYN%SILNPR(JLEV)
+      !v1 ZSPHI(JSPEC,JLEV)=-YDCST%RD*PT(JLEV,JSPEC)*YDDYN%SILNPR(JLEV)*ZDETAH
+      !v2 ZSPHI(JSPEC,JLEV)=PT(JLEV,JSPEC)*YDDYN%SILNPR(JLEV)*ZDETAH
+      ZSPHI(JLEV,JSPEC)=PT(JLEV,JSPEC)*ZDETAH
+    ENDDO
+  ENDDO
+!$acc end parallel
 #else
 !$OMP PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH)
 !$OMP DO SCHEDULE(STATIC)
-#endif
   DO JLEV=1,KLEV
     !v1 ZDETAH=YDVETA%VFE_RDETAH(JLEV)
     !v2 ZDETAH=-YDVETA%VFE_RDETAH(JLEV)*YDCST%RD
@@ -149,9 +160,6 @@ IF (LHOOK) CALL DR_HOOK('SIGAM_transpose1',0,ZHOOK_HANDLE2)
       ZSPHI(JSPEC,JLEV)=PT(JLEV,JSPEC)*ZDETAH
     ENDDO
   ENDDO
-#if defined(_OPENACC)
-!$acc END PARALLEL
-#else
 !$OMP END DO
 !$OMP END PARALLEL
 #endif
@@ -164,8 +172,8 @@ IF (LHOOK) CALL DR_HOOK('SIGAM_cond_lim',0,ZHOOK_HANDLE2)
 !$acc parallel private(jspec) default(none)
 !$acc loop gang
 do jspec=1,kspec
-  ZSPHI(jspec,0)=0.0_JPRB
-  ZSPHI(jspec,KLEV+1)=0.0_JPRB
+  ZSPHI(0,jspec)=0.0_JPRB
+  ZSPHI(KLEV+1,jspec)=0.0_JPRB
 enddo
 !$acc end parallel
 #else
@@ -180,23 +188,28 @@ IF (LHOOK) CALL DR_HOOK('SIGAM_transpose2',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,intermediaire) default(none)
 !$acc loop gang
-#else
-!$OMP PARALLEL PRIVATE(JLEV,JSPEC,intermediaire)
-!$OMP DO SCHEDULE(STATIC)
-#endif
-  !DO JLEV=1,KLEV
   DO JSPEC=1,KSPEC
      intermediaire=PSP(JSPEC)*YDDYN%SIRPRG
   !$acc loop vector
+    !DO JSPEC=1,KSPEC
+     DO JLEV=1,KLEV
+      PD(JLEV,JSPEC)=ZOUT(JLEV-1,JSPEC)+intermediaire
+      !PD(JLEV,JSPEC)=ZOUT(JSPEC,JLEV-1)+PSP(JSPEC)*SIRPRG
+    ENDDO
+  ENDDO
+!$acc END PARALLEL
+#else
+!$OMP PARALLEL PRIVATE(JLEV,JSPEC,intermediaire)
+!$OMP DO SCHEDULE(STATIC)
+  !DO JLEV=1,KLEV
+  DO JSPEC=1,KSPEC
+     intermediaire=PSP(JSPEC)*YDDYN%SIRPRG
     !DO JSPEC=1,KSPEC
      DO JLEV=1,KLEV
       PD(JLEV,JSPEC)=ZOUT(JSPEC,JLEV-1)+intermediaire
       !PD(JLEV,JSPEC)=ZOUT(JSPEC,JLEV-1)+PSP(JSPEC)*SIRPRG
     ENDDO
   ENDDO
-#if defined(_OPENACC)
-!$acc END PARALLEL
-#else
 !$OMP END DO
 !$OMP END PARALLEL
 #endif
