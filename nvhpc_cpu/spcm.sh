@@ -4,7 +4,7 @@
 #SBATCH --time 00:30:00
 #SBATCH --exclusive
 #SBATCH --export="NONE"
-#SBATCH -c 64
+##SBATCH -c 64
 ##SBATCH -c 8
 ##SBATCH --partition ndl
 
@@ -27,7 +27,7 @@ cd $SLURM_SUBMIT_DIR
 export SLURM_EXPORT_ENV=ALL
 export MPIAUTOCONFIG=mpiauto.PGI.conf
 #export MPIAUTOCONFIG=mpiauto.DDT.conf
-export OMP_NUM_THREADS=64
+#export OMP_NUM_THREADS=64
 #export OMP_NUM_THREADS=8
 
 #/opt/softs/mpiauto/mpiauto --prefix-command ./nvprof.sh --nouse-slurm-mpi\
