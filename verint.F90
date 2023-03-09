@@ -104,30 +104,30 @@ IF (KSTART > KPROF) RETURN
 
 IF (LHOOK) CALL DR_HOOK('VERINT',0,ZHOOK_HANDLE)
 
-!!!!!!#ifdef PARKIND1_SINGLE    
-!!!!!!  !!non parcouru cas test    
-!!!!!!  ALLOCATE(ZOUT(KPROMA,KLEVOUT))
-!!!!!!  ALLOCATE(ZIN(KPROMA,KLEVIN))
-!!!!!!  ZIN(KSTART:KPROF,:) = PIN(KSTART:KPROF,:)
-!!!!!!#else
-!!!!!!  !!parcouru cas test
-!!!!!!  ZOUT => POUT
-!!!!!!  ZIN => PIN
-!!!!!!#endif
+#ifdef PARKIND1_SINGLE    
+  !!non parcouru cas test    
+  ALLOCATE(ZOUT(KPROMA,KLEVOUT))
+  ALLOCATE(ZIN(KPROMA,KLEVIN))
+  ZIN(KSTART:KPROF,:) = PIN(KSTART:KPROF,:)
+#else
+  !!parcouru cas test
+  ZOUT => POUT
+  ZIN => PIN
+#endif
 
-!!!!!!!!!!LPAR = OML_IN_PARALLEL()
+LPAR = OML_IN_PARALLEL()
 
 !!!!!!!$acc data present(zin,pin,zout,pout,pinte,kproma)
 !!$acc data present(pin,pout,pinte,kproma)
 !$acc data present(pin,pout,pinte)
 
 !!non parcouru dans cas test
-!!!!!!!!!!IF (LPAR) THEN
-if (.false.) then
+IF (LPAR) THEN
+!!!!!!!!!!if (.false.) then
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_1',0,ZHOOK_HANDLE_XGEMM)
 
-!!!!!!  CALL DGEMM('N','T',KPROF-KSTART+1,KLEVOUT,KLEVIN, &
-!!!!!!       & 1.0_JPRD,ZIN,KPROMA,PINTE,klevout,0.0_JPRD,ZOUT,KPROMA)  
+  CALL DGEMM('N','T',KPROF-KSTART+1,KLEVOUT,KLEVIN, &
+       & 1.0_JPRD,ZIN,KPROMA,PINTE,klevout,0.0_JPRD,ZOUT,KPROMA)  
 
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_1',1,ZHOOK_HANDLE_XGEMM)
 !!parcouru dans cas test
@@ -160,22 +160,22 @@ ELSE
 !$OMP PARALLEL DO PRIVATE(JROF,JLEN)
     DO JROF=KSTART,KPROF,KCHUNK
       JLEN=MIN(KCHUNK,KPROF-JROF+1)
-!!!!!!      CALL DGEMM('N','T',JLEN,KLEVOUT,KLEVIN, &
-!!!!!!           & 1.0_JPRD,ZIN(JROF,1),KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT(JROF,1),KPROMA)
+      CALL DGEMM('N','T',JLEN,KLEVOUT,KLEVIN, &
+           & 1.0_JPRD,ZIN(JROF,1),KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT(JROF,1),KPROMA)
     ENDDO
 !$OMP END PARALLEL DO
 #endif
 
   !!non parcouru car .true. ci-dessus
-!!!!!!  else
+  else
     ! Chunking across KLEVOUT
-!!!!!!!$OMP PARALLEL DO PRIVATE(JLEV,JLEN)
-!!!!!!    DO JLEV=1,KLEVOUT,KCHUNK
-!!!!!!      JLEN=MIN(KCHUNK,KLEVOUT-JLEV+1)
-!!!!!!      CALL DGEMM('N','T',KPROF-KSTART+1,JLEN,KLEVIN, &
-!!!!!!           & 1.0_JPRD,ZIN,KPROMA,PINTE(JLEV,1),KLEVOUT,0.0_JPRD,ZOUT(1,JLEV),KPROMA)
-!!!!!!    ENDDO
-!!!!!!!$OMP END PARALLEL DO
+!$OMP PARALLEL DO PRIVATE(JLEV,JLEN)
+    DO JLEV=1,KLEVOUT,KCHUNK
+      JLEN=MIN(KCHUNK,KLEVOUT-JLEV+1)
+      CALL DGEMM('N','T',KPROF-KSTART+1,JLEN,KLEVIN, &
+           & 1.0_JPRD,ZIN,KPROMA,PINTE(JLEV,1),KLEVOUT,0.0_JPRD,ZOUT(1,JLEV),KPROMA)
+    ENDDO
+!$OMP END PARALLEL DO
   end if
 
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_2',1,ZHOOK_HANDLE_XGEMM)
@@ -226,8 +226,8 @@ ELSEIF (KTYPE /= 0) THEN
 else if (llsingle) then
 !$OMP PARALLEL DO SCHEDULE(STATIC) if (.not.lpar)
   DO JLEV=1,KLEVOUT
-!!!!!!    POUT(KSTART:KPROF,JLEV) = ZOUT(KSTART:KPROF,JLEV)
-    POUT(KSTART:KPROF,JLEV) = POUT(KSTART:KPROF,JLEV)
+    POUT(KSTART:KPROF,JLEV) = ZOUT(KSTART:KPROF,JLEV)
+!!!!!!!!!!    POUT(KSTART:KPROF,JLEV) = POUT(KSTART:KPROF,JLEV)
   ENDDO
 !$OMP END PARALLEL DO
 ENDIF
