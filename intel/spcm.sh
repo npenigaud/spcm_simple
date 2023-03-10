@@ -4,8 +4,8 @@
 #SBATCH --time 02:00:00
 #SBATCH --exclusive
 #SBATCH --export="NONE"
-##SBATCH -c 64
-#SBATCH -c 128
+#SBATCH -c 64
+##SBATCH -c 128
 ##SBATCH --partition ndl
 
 set -x
@@ -25,8 +25,8 @@ cd $SLURM_SUBMIT_DIR
 export SLURM_EXPORT_ENV=ALL
 export MPIAUTOCONFIG=mpiauto.PGI.conf
 #export MPIAUTOCONFIG=mpiauto.DDT.conf
-#export OMP_NUM_THREADS=64
-export OMP_NUM_THREADS=128
+export OMP_NUM_THREADS=64
+#export OMP_NUM_THREADS=128
 
 #/opt/softs/mpiauto/mpiauto --prefix-command ./nvprof.sh --nouse-slurm-mpi\
 # --verbose -np 8 --wrap --wrap-stdeo -- ./spcm.x --case ../t0031l015-008mpi --write-grib-1 --write-grib-2 --stat-gp

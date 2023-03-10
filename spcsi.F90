@@ -251,7 +251,10 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_transferts1',1,ZHOOK_HANDLE2)
 
 !!IF( .NOT.LDONEM ) CALL GSTATS(1655,0) ! Main routines and loops in SIGAM chain are parallel
 #if defined(_OPENACC)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!point à revoir sur le passage de sous-tableaux
 !!! CALL SIGAM_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZSDIV,PSPTG(:,KSTA:KEND),PSPSPG(KSTA:KEND),ZSPHI,ZOUT)  passage taille
+print *,"valeur de ksta : ",ksta
+print *,"valeur de kend : ",kend
 CALL SIGAM_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZSDIV,PSPTG(:,:),PSPSPG(KSTA:KEND),ZSPHI,ZOUT)
 #else
 CALL SIGAM_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZSDIV,PSPTG(:,KSTA:KEND),PSPSPG(KSTA:KEND))
@@ -267,9 +270,9 @@ IF (LSIDG) THEN
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV,IN) default(none)
 !$acc loop gang
-    DO JSP=KSTA,KEND
-    !$acc loop vector
-      DO JLEV=1,NFLEVG
+    DO JLEV=1,NFLEVG
+      !$acc loop vector
+      DO JSP=KSTA,KEND
         IN=YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)
         ZSDIV(JSP,jlev)=YDGEOMETRY%YRLAP%RLAPIN(IN)*PSPDIVG(JSP,jlev)-ZBDT*ZSDIV(JSP,jlev)      
       ENDDO
@@ -317,11 +320,11 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_boucle1',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV,IN,intermediaire) default(none)
 !$acc loop gang
-  DO JSP=KSTA,KEND
-  IN=YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)
-  intermediaire=ZBDT*YDGEOMETRY%YRLAP%RLAPDI(IN)
-  !$acc loop vector
-    DO JLEV=1,NFLEVG
+  DO JLEV=1,NFLEVG
+    !$acc loop vector
+    DO JSP=KSTA,KEND
+      IN=YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)
+      intermediaire=ZBDT*YDGEOMETRY%YRLAP%RLAPDI(IN)
       ZSDIV(JSP,jlev)=PSPDIVG(JSP,jlev)-intermediaire*ZSDIV(JSP,jlev)
     ENDDO
   ENDDO
@@ -455,12 +458,13 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_boucle2',0,ZHOOK_HANDLE2)
     !                 --> (SIMI*DIVprim(t+dt)).
 
 #if defined(_OPENACC)
-    !$acc parallel private(JSP,JLEV) default(none)
-    !$acc loop collapse(2)	
-    DO JSP=KSTA,KEND
-      DO JLEV=1,NFLEVG
-        ZSPDIVP(JSP,jlev)=ZSDIVP(JSP,jlev)&
-         & /(1.0_JPRB-ZBDT2*YDDYN%SIVP(JLEV)*YDGEOMETRY%YRLAP%RLAPDI(YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)))  
+    !$acc parallel private(JSP,JLEV,intermediaire) default(none)
+    !$acc loop gang
+    DO JLEV=1,NFLEVG	
+      intermediaire=ZBDT2*YDDYN%SIVP(JLEV)
+      !$acc loop vector
+      DO JSP=KSTA,KEND
+        ZSPDIVP(JSP,jlev)=ZSDIVP(JSP,jlev)/(1.0_JPRB-intermediaire*YDGEOMETRY%YRLAP%RLAPDI(YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)))  
       ENDDO
     ENDDO
     !$acc end parallel
@@ -532,12 +536,13 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_boucle3',0,ZHOOK_HANDLE2)
 
 !!  IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
 #if defined(_OPENACC)
+intermediaire=RSTRET*RSTRET
 !$acc PARALLEL PRIVATE(JSP,JLEV) default(none)
 !$acc loop gang
-  DO JSP=KSTA,KEND
-  !$acc loop vector
-    DO JLEV=1,NFLEVG
-      ZHELP(JSP,jlev)=PSPDIVG(JSP,jlev)*RSTRET*RSTRET
+  DO JLEV=1,NFLEVG
+    !$acc loop vector
+    DO JSP=KSTA,KEND
+      ZHELP(JSP,jlev)=PSPDIVG(JSP,jlev)*intermediaire
     ENDDO
   ENDDO
 !$acc end parallel
@@ -574,16 +579,23 @@ CALL SITNU_SP_OPENMP(YDGEOMETRY,YDCST,YDDYN,NFLEVG,ISPCOL,ZHELP,ZST,ZSP)
 
 !!IF( .NOT.LDONEM ) CALL GSTATS(1656,0)
 IF (LHOOK) CALL DR_HOOK('SPCSI_boucle4',0,ZHOOK_HANDLE2)
+!!!!!!!!!!!!!!!!!!!!possible de mettre les deux en parallele
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JSP,JLEV) default(none)
 !$acc loop gang
-DO JSP=KSTA,KEND
+DO JLEV=1,NFLEVG
 !$acc loop vector
-  DO JLEV=1,NFLEVG
+  DO JSP=KSTA,KEND
     PSPTG(JSP,jlev)=PSPTG(JSP,jlev)-ZBDT*ZST(JSP,jlev)
   ENDDO
-  PSPSPG(JSP)=PSPSPG(JSP)-ZBDT*ZSP(JSP)
+  
 ENDDO
+!$acc end parallel
+
+!$acc PARALLEL PRIVATE(JSP) default(none)
+DO JSP=KSTA,KEND
+  PSPSPG(JSP)=PSPSPG(JSP)-ZBDT*ZSP(JSP)
+enddo
 !$acc end parallel
 #else
 !$OMP PARALLEL DO PRIVATE(JSP,JLEV)

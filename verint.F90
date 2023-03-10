@@ -81,9 +81,8 @@ IMPLICIT NONE
 INTEGER(KIND=JPIM),INTENT(IN)    :: KPROMA,KLEVIN,KLEVOUT,KSTART,KPROF,KTYPE
 REAL(KIND=JPRD)   ,INTENT(IN)    :: PINTE(KLEVOUT,KLEVIN) 
 #if defined(_OPENACC)
-!!!REAL(KIND=JPRB),TARGET,INTENT(IN)    :: PIN(KLEVIN,kproma)
-REAL(KIND=JPRB),TARGET,INTENT(IN)    :: PIN(0:KLEVIN+1,kproma)
-REAL(KIND=JPRB),TARGET,INTENT(OUT):: POUT(KLEVOUT,kproma) 
+REAL(KIND=JPRB),TARGET,INTENT(IN)    :: PIN(kproma,klevin)
+REAL(KIND=JPRB),TARGET,INTENT(OUT):: POUT(kproma,KLEVOUT) 
 #else
 REAL(KIND=JPRB),TARGET,INTENT(IN)    :: PIN(KPROMA,KLEVIN)
 REAL(KIND=JPRB),TARGET,INTENT(OUT):: POUT(KPROMA,KLEVOUT) 
@@ -104,30 +103,29 @@ IF (KSTART > KPROF) RETURN
 
 IF (LHOOK) CALL DR_HOOK('VERINT',0,ZHOOK_HANDLE)
 
-!!!!!!#ifdef PARKIND1_SINGLE    
-!!!!!!  !!non parcouru cas test    
-!!!!!!  ALLOCATE(ZOUT(KPROMA,KLEVOUT))
-!!!!!!  ALLOCATE(ZIN(KPROMA,KLEVIN))
-!!!!!!  ZIN(KSTART:KPROF,:) = PIN(KSTART:KPROF,:)
-!!!!!!#else
-!!!!!!  !!parcouru cas test
-!!!!!!  ZOUT => POUT
-!!!!!!  ZIN => PIN
-!!!!!!#endif
+#ifdef PARKIND1_SINGLE    
+  !!non parcouru cas test    
+  ALLOCATE(ZOUT(KPROMA,KLEVOUT))
+  ALLOCATE(ZIN(KPROMA,KLEVIN))
+  ZIN(KSTART:KPROF,:) = PIN(KSTART:KPROF,:)
+#else
+  !!parcouru cas test
+  ZOUT => POUT
+  ZIN => PIN
+#endif
 
-!!!!!!!!!!LPAR = OML_IN_PARALLEL()
+LPAR = OML_IN_PARALLEL()
 
 !!!!!!!$acc data present(zin,pin,zout,pout,pinte,kproma)
 !!$acc data present(pin,pout,pinte,kproma)
 !$acc data present(pin,pout,pinte)
 
 !!non parcouru dans cas test
-!!!!!!!!!!IF (LPAR) THEN
-if (.false.) then
+IF (LPAR) THEN
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_1',0,ZHOOK_HANDLE_XGEMM)
 
-!!!!!!  CALL DGEMM('N','T',KPROF-KSTART+1,KLEVOUT,KLEVIN, &
-!!!!!!       & 1.0_JPRD,ZIN,KPROMA,PINTE,klevout,0.0_JPRD,ZOUT,KPROMA)  
+  CALL DGEMM('N','T',KPROF-KSTART+1,KLEVOUT,KLEVIN, &
+       & 1.0_JPRD,ZIN,KPROMA,PINTE,klevout,0.0_JPRD,ZOUT,KPROMA)  
 
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_1',1,ZHOOK_HANDLE_XGEMM)
 !!parcouru dans cas test
@@ -147,35 +145,32 @@ ELSE
 !!$OMP END PARALLEL DO
 
 #if defined(_OPENACC)
-      !!!!CALL cublasDGEMM('N','T',KPROMA,KLEVOUT,KLEVIN, &
-      !!!!     & 1.0_JPRD,PIN,KPROMA,PINTE,KLEVOUT,0.0_JPRD,POUT,KPROMA)
 !$acc host_data use_device(PIN,POUT,PINTE)
-      CALL cublasDGEMM('N','N',KLEVOUT,KPROMA,KLEVIN, &
-           & 1.0_JPRD,PINTE,KLEVOUT,PIN(1,kstart),KLEVIN+2,0.0_JPRD,POUT,KLEVOUT)
+      CALL cublasDGEMM('N','T',KPROMA,KLEVOUT,KLEVIN, &
+           & 1.0_JPRD,PIN,KPROMA,PINTE,KLEVOUT,0.0_JPRD,POUT,KPROMA)
 !$acc end host_data
-!!!!!!           & 1.0_JPRD,ZIN,KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT,KPROMA)
 !!wait for time measurement
 !$acc wait
 #else
 !$OMP PARALLEL DO PRIVATE(JROF,JLEN)
     DO JROF=KSTART,KPROF,KCHUNK
       JLEN=MIN(KCHUNK,KPROF-JROF+1)
-!!!!!!      CALL DGEMM('N','T',JLEN,KLEVOUT,KLEVIN, &
-!!!!!!           & 1.0_JPRD,ZIN(JROF,1),KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT(JROF,1),KPROMA)
+      CALL DGEMM('N','T',JLEN,KLEVOUT,KLEVIN, &
+           & 1.0_JPRD,ZIN(JROF,1),KPROMA,PINTE,KLEVOUT,0.0_JPRD,ZOUT(JROF,1),KPROMA)
     ENDDO
 !$OMP END PARALLEL DO
 #endif
 
   !!non parcouru car .true. ci-dessus
-!!!!!!  else
+  else
     ! Chunking across KLEVOUT
-!!!!!!!$OMP PARALLEL DO PRIVATE(JLEV,JLEN)
-!!!!!!    DO JLEV=1,KLEVOUT,KCHUNK
-!!!!!!      JLEN=MIN(KCHUNK,KLEVOUT-JLEV+1)
-!!!!!!      CALL DGEMM('N','T',KPROF-KSTART+1,JLEN,KLEVIN, &
-!!!!!!           & 1.0_JPRD,ZIN,KPROMA,PINTE(JLEV,1),KLEVOUT,0.0_JPRD,ZOUT(1,JLEV),KPROMA)
-!!!!!!    ENDDO
-!!!!!!!$OMP END PARALLEL DO
+!$OMP PARALLEL DO PRIVATE(JLEV,JLEN)
+    DO JLEV=1,KLEVOUT,KCHUNK
+      JLEN=MIN(KCHUNK,KLEVOUT-JLEV+1)
+      CALL DGEMM('N','T',KPROF-KSTART+1,JLEN,KLEVIN, &
+           & 1.0_JPRD,ZIN,KPROMA,PINTE(JLEV,1),KLEVOUT,0.0_JPRD,ZOUT(1,JLEV),KPROMA)
+    ENDDO
+!$OMP END PARALLEL DO
   end if
 
   IF (LHOOK) CALL DR_HOOK('VERINT_DGEMM_2',1,ZHOOK_HANDLE_XGEMM)
@@ -189,11 +184,11 @@ IF (LHOOK) CALL DR_HOOK('VERINT_calcul',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JROF) if (.not.lpar) default(none)
 !$acc loop collapse(2)
-DO JROF=KSTART,KPROF
-  DO JLEV=1,KLEVOUT-1
-    
-!!!!!!      POUT(JROF,JLEV)=ZOUT(JROF,JLEV)-ZOUT(JROF,KLEVOUT)
-      POUT(jlev,JROF)=POUT(JLEV,jrof)-POUT(klevout,JROF)
+DO JLEV=1,KLEVOUT-1
+  DO JROF=KSTART,KPROF
+
+!!!!!!      POUT(JROF,JLEV)=ZOUT(JROF,JLEV)-ZOUT(JROF,KLEVOUT) !!!!!avant changement pointeur
+      POUT(JROF,jlev)=POUT(JROF,jlev)-POUT(JROF,klevout)
     ENDDO
   ENDDO
 !!!!$OMP END PARALLEL DO
@@ -202,7 +197,7 @@ DO JROF=KSTART,KPROF
   !$acc PARALLEL PRIVATE(JROF) default(none)
   !$acc loop gang
   do jrof=kstart,kprof
-    pout(klevout,jrof)=0._JPRB
+    pout(jrof,klevout)=0._JPRB
   enddo
   !$acc end parallel
 #else
@@ -210,7 +205,6 @@ DO JROF=KSTART,KPROF
   DO JLEV=1,KLEVOUT-1
     DO JROF=KSTART,KPROF
       POUT(JROF,JLEV)=ZOUT(JROF,JLEV)-ZOUT(JROF,KLEVOUT)
-!!!!!!      POUT(JROF,JLEV)=ZOUT(JROF,JLEV)-ZOUT(JROF,KLEVOUT)
     ENDDO
   ENDDO
 !$OMP END PARALLEL DO
@@ -226,8 +220,7 @@ ELSEIF (KTYPE /= 0) THEN
 else if (llsingle) then
 !$OMP PARALLEL DO SCHEDULE(STATIC) if (.not.lpar)
   DO JLEV=1,KLEVOUT
-!!!!!!    POUT(KSTART:KPROF,JLEV) = ZOUT(KSTART:KPROF,JLEV)
-    POUT(KSTART:KPROF,JLEV) = POUT(KSTART:KPROF,JLEV)
+    POUT(KSTART:KPROF,JLEV) = ZOUT(KSTART:KPROF,JLEV)
   ENDDO
 !$OMP END PARALLEL DO
 ENDIF

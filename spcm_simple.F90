@@ -105,8 +105,8 @@ IF (NSPEC2V > 0) THEN
 IF (LHOOK) CALL DR_HOOK('SPCM_SIMPLE_transpose1',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 zspspg(:)=zspspg2(:)
-do compteur1=1,nflevg
-  do compteur2=1,ispec2V
+do compteur1=1,ispec2V 
+  do compteur2=1,nflevg
     zspvorg(compteur1,compteur2)=zspvorg2(compteur2,compteur1)
     zspdivg(compteur1,compteur2)=zspdivg2(compteur2,compteur1)
     zsptg(compteur1,compteur2)=zsptg2(compteur2,compteur1)
@@ -140,6 +140,7 @@ IF (LHOOK) CALL DR_HOOK('SPCM_SIMPLE_transfert1b',1,ZHOOK_HANDLE2)
 IF (LHOOK) CALL DR_HOOK('SPCM_SIMPLE_transfert2b',0,ZHOOK_HANDLE2)
 !$acc end data
 IF (LHOOK) CALL DR_HOOK('SPCM_SIMPLE_transfert2a',1,ZHOOK_HANDLE2)
+
 #else
   CALL SPCSI(YDGEOMETRY, YDMODEL%YRCST, YDLDDH, YDMODEL%YRML_GCONF%YRRIP, YDDYN, IM, IMLOC, 1, &
   & NSPEC2V, .FALSE.,  ZSPVORG, ZSPDIVG, ZSPTG, ZSPSPG, ZSPTNDSI_VORG, ZSPTNDSI_DIVG, ZSPTNDSI_TG)
@@ -154,8 +155,9 @@ IF (LHOOK) CALL DR_HOOK('SPCM_SIMPLE_transfert2a',1,ZHOOK_HANDLE2)
 IF (LHOOK) CALL DR_HOOK('SPCM_SIMPLE_transpose2',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 zspspg2(:)=zspspg(:)
-do compteur1=1,ispec2v
-  do compteur2=1,nflevg
+do compteur2=1,ispec2V
+  do compteur1=1,nflevg
+
     zspvorg2(compteur1,compteur2)=zspvorg(compteur2,compteur1)
     zspdivg2(compteur1,compteur2)=zspdivg(compteur2,compteur1)
     zsptg2(compteur1,compteur2)=zsptg(compteur2,compteur1)

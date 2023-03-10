@@ -75,13 +75,17 @@ TYPE(TCST)        ,INTENT(IN)    :: YDCST
 TYPE(TDYN)        ,INTENT(IN)    :: YDDYN
 INTEGER(KIND=JPIM),INTENT(IN)    :: KLEV 
 INTEGER(KIND=JPIM),INTENT(IN)    :: KSPEC
+ 
+#if defined(_OPENACC)
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PD(KSPEC,klev)
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PT(KSPEC,klev)
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PSP(KSPEC)
+REAL(KIND=JPRB),intent(inout) :: ZSDIV(kspec,0:KLEV+1)          !!!!!!!on garde deux branches, mêmes ordres car il y a eu deux transpositions pour ces tableaux intermédiaires
+REAL(KIND=JPRB),intent(inout) :: ZOUT(kspec,0:KLEV)
+#else
 REAL(KIND=JPRB)   ,INTENT(IN)    :: PD(KLEV,KSPEC)
 REAL(KIND=JPRB)   ,INTENT(OUT)   :: PT(KLEV,KSPEC)
-REAL(KIND=JPRB)   ,INTENT(OUT)   :: PSP(KSPEC) 
-#if defined(_OPENACC)
-REAL(KIND=JPRB),intent(inout) :: ZSDIV(0:KLEV+1,kspec)
-REAL(KIND=JPRB),intent(inout) :: ZOUT(0:KLEV,kspec)
-#else
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PSP(KSPEC)
 !     ------------------------------------------------------------------
 
 REAL(KIND=JPRB) :: ZSDIV(KSPEC,0:KLEV+1)
@@ -129,11 +133,11 @@ IF (LHOOK) CALL DR_HOOK('SITNU_transpose1',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) default(none)
 !$acc loop gang
-DO JSPEC=1,KSPEC
-    !$acc loop vector
   DO JLEV=1,KLEV
-    ZDETAH=YDGEOMETRY%YRVETA%VFE_RDETAH(JLEV)
-      ZSDIV(JLEV,JSPEC)=PD(JLEV,JSPEC)*YDDYN%SIDELP(JLEV)*ZDETAH
+    ZDETAH=YDGEOMETRY%YRVETA%VFE_RDETAH(JLEV)*YDDYN%SIDELP(JLEV)
+    !$acc loop vector
+    DO JSPEC=1,KSPEC               !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!pour les tableaux non intermédiaires changement, donc pas de transposition openacc
+      ZSDIV(JSPEC,jlev)=PD(JSPEC,jlev)*ZDETAH
     ENDDO
   ENDDO
 !$acc END PARALLEL
@@ -158,8 +162,8 @@ IF (LHOOK) CALL DR_HOOK('SITNU_cond_lim',0,ZHOOK_HANDLE2)
     !$acc parallel private(jspec) default(none)
     !$acc loop gang
     do jspec=1,kspec
-      ZSDIV(0,jspec)=0.0_JPRB
-      ZSDIV(KLEV+1,jspec)=0.0_JPRB
+      ZSDIV(jspec,0)=0.0_JPRB
+      ZSDIV(jspec,KLEV+1)=0.0_JPRB
     enddo
     !$acc end parallel
 #else
@@ -176,14 +180,11 @@ IF (LHOOK) CALL DR_HOOK('SITNU_transpose2',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,ZREC) default(none)
 !$acc loop gang
-  !DO JLEV=1,KLEV
-  DO JSPEC=1,KSPEC
-    !DO JSPEC=1,KSPEC
+  DO JLEV=1,KLEV
+    ZREC=(1.0_JPRB/YDDYN%SITLAF(JLEV))*intermediaire
     !$acc loop vector
-    DO JLEV=1,KLEV
-      ZREC=1.0_JPRB/YDDYN%SITLAF(JLEV)
-      !PT(JLEV,JSPEC)=YDCST%RKAPPA*SITR*ZOUT(JSPEC,JLEV-1)*ZREC
-      PT(JLEV,JSPEC)=intermediaire*ZOUT(JLEV-1,JSPEC)*ZREC
+    DO JSPEC=1,KSPEC
+      PT(JSPEC,jlev)=ZOUT(JSPEC,jlev-1)*ZREC
     ENDDO
   ENDDO
 !$acc END PARALLEL
@@ -209,7 +210,7 @@ IF (LHOOK) CALL DR_HOOK('SITNU_calcul1',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 !$acc parallel loop private(jspec) default(none)
   DO JSPEC=1,KSPEC
-    PSP(JSPEC)=ZOUT(KLEV,JSPEC)*YDDYN%SIRPRN
+    PSP(JSPEC)=ZOUT(JSPEC,klev)*YDDYN%SIRPRN
   ENDDO
 !$acc end parallel
 #else
