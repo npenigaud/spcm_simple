@@ -147,6 +147,7 @@ REAL(KIND=JPRB) :: ZBDT, ZBDT2
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE,ZHOOK_HANDLE2
 
 real(kind=jprb)::intermediaire
+!!integer(kind=jpim)::compteurprint1,compteurprint2
 
 !     ------------------------------------------------------------------
 
@@ -374,13 +375,21 @@ ENDIF
 !           Current space --> vertical eigenmodes space.
 
 !!IF( .NOT.LDONEM ) CALL GSTATS(1660,0) ! MXMAOP Call to SGEMMX Parallelised
-
+IF (LHOOK) CALL DR_HOOK('SPCSI_mxmaop1',0,ZHOOK_HANDLE2)
 !!$acc update host(zsdiv,zsdivp)
 !!CALL MXMAOP(SIMI,1,NFLEVG,ZSDIV,1,NFLEVG,ZSDIVP(:,KSTA:KEND),1,NFLEVG,&
  !!& NFLEVG,NFLEVG,ISPCOL) 
 !!!$acc update device(zsdiv,zsdivp)
 
-IF (LHOOK) CALL DR_HOOK('SPCSI_mxmaop1',0,ZHOOK_HANDLE2)
+
+!!do compteurprint1=1,nflevg
+!!  do compteurprint2=1,nflevg
+!!     print *,simi(compteurprint1,compteurprint2)
+!!  end do
+!!  print *,"ligne"
+!!end do
+
+
 #if defined(_OPENACC)
 !$acc host_data use_device(SIMI,ZSDIV,ZSDIVP)
 !!!!!!CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &

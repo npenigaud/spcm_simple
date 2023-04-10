@@ -97,6 +97,9 @@ REAL(KIND=JPRD),CONTIGUOUS,POINTER :: ZIN(:,:)
 REAL(KIND=JPRD),CONTIGUOUS,POINTER :: ZOUT(:,:)
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE,ZHOOK_HANDLE_XGEMM,ZHOOK_HANDLE2
 
+
+!!integer(kind=jpim)::compteurprint1,compteurprint2
+
 #include "abor1.intfb.h"
 
 IF (KSTART > KPROF) RETURN
@@ -143,6 +146,14 @@ ELSE
 !!$acc end host_data
 !    ENDDO
 !!$OMP END PARALLEL DO
+
+!!do compteurprint1=1,klevout
+!!  do compteurprint2=1,klevin
+!!     print *,pinte(compteurprint1,compteurprint2)
+!!  end do
+!!  print *,"ligne"
+!!end do
+
 
 #if defined(_OPENACC)
 !$acc host_data use_device(PIN,POUT,PINTE)

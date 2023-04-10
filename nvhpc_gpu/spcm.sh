@@ -54,10 +54,12 @@ export MPIAUTOCONFIG=mpiauto.PGI.conf
 #/opt/softs/bin/ja
 #exit
 
-/opt/softs/mpiauto/mpiauto \
-  --prefix-command ./nsys.sh --nouse-slurm-mpi \
-  --verbose -np 1 --wrap --wrap-stdeo -- \
-  ./spcm.x --case ../t0499l105-001mpi --stat-gp
+##/opt/softs/mpiauto/mpiauto \
+##  --prefix-command ./nsys.sh --nouse-slurm-mpi \
+##  --verbose -np 1 --wrap --wrap-stdeo -- \
+##  ./spcm.x --case ../t0499l105-001mpi --stat-gp
+
+mpirun -np 1 /usr/bin/time -f 'RSS=%Mkb' ./spcm.x --case ../t0499l105-001mpi
 
 #/opt/softs/mpiauto/mpiauto \
 #  --prefix-command ./nsys.sh --nouse-slurm-mpi \
