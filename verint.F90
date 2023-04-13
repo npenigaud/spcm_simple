@@ -149,6 +149,9 @@ ELSE
 #if defined(_OPENACC)
       !!!!CALL cublasDGEMM('N','T',KPROMA,KLEVOUT,KLEVIN, &
       !!!!     & 1.0_JPRD,PIN,KPROMA,PINTE,KLEVOUT,0.0_JPRD,POUT,KPROMA)
+print *,"verint klevout : ",klevout
+print *,"verint kproma : ",kproma
+print *,"verint klevin : ",klevin
 !$acc host_data use_device(PIN,POUT,PINTE)
       CALL cublasDGEMM('N','N',KLEVOUT,KPROMA,KLEVIN, &
            & 1.0_JPRD,PINTE,KLEVOUT,PIN(1,kstart),KLEVIN+2,0.0_JPRD,POUT,KLEVOUT)

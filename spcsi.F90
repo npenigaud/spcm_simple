@@ -365,6 +365,8 @@ ENDIF
 !!!$acc update device(zsdiv,zsdivp)
 
 IF (LHOOK) CALL DR_HOOK('SPCSI_mxmaop1',0,ZHOOK_HANDLE2)
+print *, "NFLEVG : ",nflevg
+print *, "ispcol : ",ispcol
 #if defined(_OPENACC)
 !$acc host_data use_device(SIMI,ZSDIV,ZSDIVP)
 CALL cublasDgemm ('N','N',NFLEVG,ISPCOL,NFLEVG,1.0_JPRB, &
@@ -438,6 +440,7 @@ ELSE
 IF (LHOOK) CALL DR_HOOK('SPCSI_boucle2',0,ZHOOK_HANDLE2)
     !                 Inversion of a diagonal system (Helmholtz equation)
     !                 --> (SIMI*DIVprim(t+dt)).
+    #if defined(_OPENACC)
     !$acc parallel private(JSP,JLEV) default(none)
     !$acc loop collapse(2)	
     DO JSP=KSTA,KEND
@@ -447,6 +450,15 @@ IF (LHOOK) CALL DR_HOOK('SPCSI_boucle2',0,ZHOOK_HANDLE2)
       ENDDO
     ENDDO
     !$acc end parallel
+    #else
+    !$omp parallel do private(jsp,jlev)
+    DO JSP=KSTA,KEND
+      DO JLEV=1,NFLEVG
+        ZSPDIVP(JLEV,JSP)=ZSDIVP(JLEV,JSP)&
+         & /(1.0_JPRB-ZBDT2*YDDYN%SIVP(JLEV)*YDGEOMETRY%YRLAP%RLAPDI(YDGEOMETRY%YRLAP%NVALUE(JSP+IOFF)))  
+      ENDDO
+    ENDDO
+    #endif
 IF (LHOOK) CALL DR_HOOK('SPCSI_boucle2',1,ZHOOK_HANDLE2)
   ENDIF
 ENDIF

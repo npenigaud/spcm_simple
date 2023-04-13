@@ -128,9 +128,9 @@ IF (LHOOK) CALL DR_HOOK('SITNU_transpose1',0,ZHOOK_HANDLE2)
 
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) default(none)
-!$acc loop gang
+!$acc loop collapse(2) !gang
 DO JSPEC=1,KSPEC
-    !$acc loop vector
+   ! !$acc loop vector
   DO JLEV=1,KLEV
     ZDETAH=YDGEOMETRY%YRVETA%VFE_RDETAH(JLEV)
       ZSDIV(JLEV,JSPEC)=PD(JLEV,JSPEC)*YDDYN%SIDELP(JLEV)*ZDETAH
@@ -175,11 +175,11 @@ intermediaire=YDCST%RKAPPA*YDDYN%SITR
 IF (LHOOK) CALL DR_HOOK('SITNU_transpose2',0,ZHOOK_HANDLE2)
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,ZREC) default(none)
-!$acc loop gang
+!$acc loop collapse(2) !gang
   !DO JLEV=1,KLEV
   DO JSPEC=1,KSPEC
     !DO JSPEC=1,KSPEC
-    !$acc loop vector
+    !!$acc loop vector
     DO JLEV=1,KLEV
       ZREC=1.0_JPRB/YDDYN%SITLAF(JLEV)
       !PT(JLEV,JSPEC)=YDCST%RKAPPA*SITR*ZOUT(JSPEC,JLEV-1)*ZREC

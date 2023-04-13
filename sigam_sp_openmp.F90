@@ -133,9 +133,9 @@ IF (LHOOK) CALL DR_HOOK('SIGAM_transpose1',0,ZHOOK_HANDLE2)
 
 #if defined(_OPENACC)
 !$acc PARALLEL PRIVATE(JLEV,JSPEC,ZDETAH) default(none)
-!$acc loop gang
+!$acc loop collapse(2) !gang
   DO JSPEC=1,KSPEC
-  !$acc loop vector
+  !!$acc loop vector
   DO JLEV=1,KLEV
     !v1 ZDETAH=YDVETA%VFE_RDETAH(JLEV)
     !v2 ZDETAH=-YDVETA%VFE_RDETAH(JLEV)*YDCST%RD
@@ -190,7 +190,7 @@ IF (LHOOK) CALL DR_HOOK('SIGAM_transpose2',0,ZHOOK_HANDLE2)
 !$acc loop gang
   DO JSPEC=1,KSPEC
      intermediaire=PSP(JSPEC)*YDDYN%SIRPRG
-  !$acc loop vector
+    !$acc loop vector
     !DO JSPEC=1,KSPEC
      DO JLEV=1,KLEV
       PD(JLEV,JSPEC)=ZOUT(JLEV-1,JSPEC)+intermediaire
